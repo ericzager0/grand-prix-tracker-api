@@ -7,9 +7,7 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
-@Repository
 public interface EventoF1Repository extends JpaRepository<EventoF1, UUID> {
 
     @Query("SELECT e FROM EventoF1 e " +
