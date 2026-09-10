@@ -118,5 +118,20 @@ class EventControllerTest {
 
         verify(eventService, times(1)).getEventById(nonExistentId);
     }
+
+    @Test
+    void testGetAllEvents_WithTemporadaParam() throws Exception {
+        when(eventService.getEventsByTemporada(2026)).thenReturn(List.of(sampleDto));
+
+        mockMvc.perform(get("/events?temporada=2026")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[0].temporada").value(2026));
+
+        verify(eventService, times(1)).getEventsByTemporada(2026);
+        verify(eventService, never()).getAllEvents();
+    }
 }
 

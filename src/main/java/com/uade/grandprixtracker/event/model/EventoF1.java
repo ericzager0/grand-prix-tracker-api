@@ -8,13 +8,46 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Index;
+import jakarta.persistence.NamedAttributeNode;
+import jakarta.persistence.NamedEntityGraph;
+import jakarta.persistence.NamedSubgraph;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "eventos_f1")
+@Table(
+    name = "eventos_f1",
+    indexes = {
+        @Index(name = "idx_eventos_f1_temporada", columnList = "temporada"),
+        @Index(name = "idx_eventos_f1_fecha_inicio", columnList = "fecha_inicio"),
+        @Index(name = "idx_eventos_f1_id_circuito", columnList = "id_circuito"),
+        @Index(name = "idx_eventos_f1_temp_fecha", columnList = "temporada, fecha_inicio"),
+        @Index(name = "idx_eventos_f1_estado", columnList = "estado")
+    }
+)
+@NamedEntityGraph(
+    name = "EventoF1.withCircuitCityCountry",
+    attributeNodes = {
+        @NamedAttributeNode(value = "circuito", subgraph = "circuito-subgraph")
+    },
+    subgraphs = {
+        @NamedSubgraph(
+            name = "circuito-subgraph",
+            attributeNodes = {
+                @NamedAttributeNode(value = "ciudad", subgraph = "ciudad-subgraph")
+            }
+        ),
+        @NamedSubgraph(
+            name = "ciudad-subgraph",
+            attributeNodes = {
+                @NamedAttributeNode(value = "pais")
+            }
+        )
+    }
+)
 public class EventoF1 {
 
     @Id

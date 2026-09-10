@@ -32,6 +32,13 @@ public class EventService {
                 .toList();
     }
 
+    public List<EventoF1ResponseDto> getEventsByTemporada(Integer temporada) {
+        return eventoF1Repository.findByTemporadaWithCircuitCityCountry(temporada)
+                .stream()
+                .map(this::mapToDto)
+                .toList();
+    }
+
     public EventoF1ResponseDto getEventById(UUID id) {
         return eventoF1Repository.findByIdWithCircuitCityCountry(id)
                 .map(this::mapToDto)

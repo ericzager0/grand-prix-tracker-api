@@ -117,5 +117,17 @@ class EventServiceTest {
 
         assertThrows(ResourceNotFoundException.class, () -> eventService.getEventById(nonExistentId));
     }
+
+    @Test
+    void testGetEventsByTemporada() {
+        when(eventoF1Repository.findByTemporadaWithCircuitCityCountry(2026)).thenReturn(List.of(testEvento));
+
+        List<EventoF1ResponseDto> results = eventService.getEventsByTemporada(2026);
+
+        assertNotNull(results);
+        assertEquals(1, results.size());
+        assertEquals(2026, results.getFirst().temporada());
+        verify(eventoF1Repository, times(1)).findByTemporadaWithCircuitCityCountry(2026);
+    }
 }
 

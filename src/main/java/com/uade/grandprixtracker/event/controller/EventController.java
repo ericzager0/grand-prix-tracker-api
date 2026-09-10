@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -22,8 +23,11 @@ public class EventController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<EventoF1ResponseDto>>> getAllEvents() {
-        List<EventoF1ResponseDto> events = eventService.getAllEvents();
+    public ResponseEntity<ApiResponse<List<EventoF1ResponseDto>>> getAllEvents(
+            @RequestParam(name = "temporada", required = false) Integer temporada) {
+        List<EventoF1ResponseDto> events = (temporada != null)
+                ? eventService.getEventsByTemporada(temporada)
+                : eventService.getAllEvents();
         return ResponseEntity.ok(ApiResponse.success("Eventos obtenidos correctamente", events));
     }
 
