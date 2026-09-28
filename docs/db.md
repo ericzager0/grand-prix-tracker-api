@@ -99,6 +99,8 @@ Referenciada por: `reserva_detalle_entradas.id_entrada`
 
 ### `hoteles`
 
+Los datos de `hoteles` y `habitaciones_hotel` los carga el **microservicio de hoteles** del equipo, no el backend ni `seed.sql`. El backend solo los lee y descuenta `habitaciones_hotel.stock_disponible` al comprar (ver [`checkout.md`](./checkout.md#limitaciones-conocidas)). Para que un hotel aparezca en un evento, su `id_ciudad` tiene que ser exactamente la ciudad del circuito.
+
 | Columna | Tipo | Detalle |
 |---|---|---|
 | `id_hotel` | uuid | PK |
@@ -286,6 +288,9 @@ Las FKs de entradas, hoteles, habitaciones, vuelos y reservas no tienen índice 
 
 ## Datos de prueba
 
-[`src/main/resources/db/seed.sql`](../src/main/resources/db/seed.sql) carga entradas, hoteles, habitaciones, vuelos, clientes y tarjetas sobre los eventos existentes. El detalle de qué id es cada cosa está en [`api.md`](./api.md#datos-de-prueba).
+- [`src/main/resources/db/seed.sql`](../src/main/resources/db/seed.sql) carga entradas, vuelos, clientes y tarjetas sobre los eventos existentes, más Argentina y Buenos Aires como origen de los vuelos.
+- Hoteles y habitaciones los carga el microservicio de hoteles.
+
+El detalle de qué id es cada cosa está en [`api.md`](./api.md#datos-de-prueba).
 
 La lógica de negocio detrás de `reservas.estado` y del descuento de stock está en [`checkout.md`](./checkout.md).

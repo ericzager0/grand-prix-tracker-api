@@ -45,8 +45,39 @@ Las fechas y horas se toman de un `Clock` inyectado (`ClockConfig`, en UTC), par
 ## Limitaciones conocidas
 
 - **Stock de hotel sin fechas.** `habitaciones_hotel.stock_disponible` es un contador único, no por noche: reservar una habitación la descuenta para todo el evento, sin importar las fechas. Si se necesita disponibilidad por fecha, hace falta otro modelo de datos.
-- **Fechas de hotel no atadas al evento.** Se valida que check-out sea posterior a check-in y que check-in no sea en el pasado, pero no que la estadía coincida con el fin de semana de la carrera.
+- **Regla de fechas de hotel no exigida por el backend.** Por negocio, el check-in es 1 día antes de `fecha_inicio` del evento y el check-out 1 día después de `fecha_fin` (carrera de jueves a domingo → miércoles a lunes). Hoy la aplica el front; el backend solo valida que check-out sea posterior a check-in y que check-in no sea en el pasado. Para exigirla, el checkout debería rechazar otras fechas o directamente calcularlas él y dejar de recibirlas en el body.
 - **Traslados.** `reservas.incluye_transporte` existe en la base pero no hay tabla de traslados; hoy siempre queda en `false`.
 - **Cancelaciones.** No hay endpoint para cancelar una reserva ni para devolver stock.
 - **Estado de los eventos.** `eventos_f1.estado` no se actualiza solo. El checkout se protege usando `fecha_fin`, pero el calendario sigue mostrando el estado que figura en la base.
+- **Stock de hotel compartido con el microservicio.** Hoteles y habitaciones los carga un microservicio del equipo, y el checkout descuenta `habitaciones_hotel.stock_disponible` en cada compra. Si el microservicio vuelve a escribir el stock al sincronizar, pisa esos descuentos y se pueden vender habitaciones que ya no hay. Además, una habitación con reservas no se puede borrar (FK `ON DELETE RESTRICT`), así que el microservicio tiene que actualizar por id en vez de borrar y recargar.
 - **Identificación del cliente.** Hasta integrar Supabase Auth, el cliente llega en el header `X-Cliente-Id` y no se verifica: cualquiera que conozca un id puede comprar a su nombre o ver sus tarjetas. Es aceptable para desarrollo, no para producción.
+
+## Limpiar compras de prueba
+
+Para deshacer una compra (devolver el stock y borrar la reserva), correr en Supabase → SQL Editor, reemplazando el código de confirmación:
+
+```sql
+BEGIN;
+
+CREATE TEMP TABLE reserva_a_borrar ON COMMIT DROP AS
+SELECT id_reserva FROM reservas WHERE codigo_confirmacion = 'GP-XXXXXXXX';
+
+UPDATE entradas_gradas e SET stock_disponible = e.stock_disponible + d.cantidad
+FROM reserva_detalle_entradas d
+WHERE d.id_entrada = e.id_entrada AND d.id_reserva IN (SELECT id_reserva FROM reserva_a_borrar);
+
+UPDATE habitaciones_hotel h SET stock_disponible = h.stock_disponible + 1
+FROM reserva_detalle_hoteles d
+WHERE d.id_habitacion = h.id_habitacion AND d.id_reserva IN (SELECT id_reserva FROM reserva_a_borrar);
+
+UPDATE vuelos v SET stock_asientos = v.stock_asientos + d.cantidad_pasajeros
+FROM reserva_detalle_vuelos d
+WHERE d.id_vuelo = v.id_vuelo AND d.id_reserva IN (SELECT id_reserva FROM reserva_a_borrar);
+
+-- Los detalles se borran en cascada (FK ON DELETE CASCADE).
+DELETE FROM reservas WHERE id_reserva IN (SELECT id_reserva FROM reserva_a_borrar);
+
+COMMIT;
+```
+
+Si la compra se pagó con una tarjeta nueva, esa tarjeta queda guardada en `metodos_pago`; borrarla aparte si no se quiere conservar.

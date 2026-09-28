@@ -64,7 +64,7 @@ El wizard vive en `/booking/[id]/...` y arma el paquete en memoria. Solo al conf
 | Paso | Endpoint | Qué guardar en memoria |
 |---|---|---|
 | 0. Evento elegido | `GET /events/{id}` | `idEvento`, fechas del evento, ciudad |
-| 1. Hotel | `GET /events/{id}/hotels` | por cada habitación elegida: `idHabitacion`, `fechaCheckIn`, `fechaCheckOut` |
+| 1. Hotel | `GET /events/{id}/hotels` | por cada habitación elegida: `idHabitacion`. Las fechas se calculan del evento (ver abajo) |
 | 2. Entradas | `GET /events/{id}/tickets` | `idEntrada` y `cantidad` |
 | 3. Vuelos | `GET /events/{id}/flights` | `idVuelo` y `cantidadPasajeros` (una ida y una vuelta, filtrando por `sentido`) |
 | 4. Pago | `GET /payment-methods` | `idMetodoPago` de una tarjeta guardada, o los datos de una tarjeta nueva |
@@ -73,10 +73,13 @@ El wizard vive en `/booking/[id]/...` y arma el paquete en memoria. Solo al conf
 Recomendaciones:
 
 - **Todos los productos son opcionales**, pero el paquete necesita al menos uno. El wizard puede permitir saltear pasos.
+- **Fechas del hotel: las define el negocio, no el usuario.** El check-in es **1 día antes de `fechaInicio`** y el check-out **1 día después de `fechaFin`**. Si la carrera va de jueves a domingo, el check-in es el miércoles y el check-out el lunes. El front las calcula a partir del evento y las manda en cada ítem de `habitaciones`. El backend hoy no verifica esta regla, así que es responsabilidad del front respetarla. Ojo al calcularlas: las fechas del evento son `"YYYY-MM-DD"` sin hora; sumar y restar días sin pasar por zonas horarias (por ejemplo, operando sobre `Date.UTC`), para que no se corran un día.
 - **El precio que muestra el front es orientativo**: el total real lo calcula el backend y viene en la respuesta del `POST`. Para el resumen previo se puede calcular igual: `precioUsd × cantidad` para entradas, `precioPorNocheUsd × noches` para hotel y `precioUsd × cantidadPasajeros` para vuelos.
 - **Mostrar el stock y deshabilitar lo agotado** (`stockDisponible === 0` / `stockAsientos === 0`). Aun así, entre que el usuario elige y confirma alguien puede comprar lo último: en ese caso el `POST` responde `409` y el `message` dice qué ítem se agotó. Lo ideal es volver al paso de ese ítem sin perder el resto del paquete.
 - **No confiar en `estado` del evento para saber si ya pasó.** Hay eventos cargados como `Proximo` cuyas fechas ya pasaron. Usar `fechaFin`: el backend rechaza la compra si `fechaFin` es anterior a hoy.
 - **Tarjetas vencidas**: `GET /payment-methods` las marca con `vencida: true`. El `POST` las rechaza, así que conviene deshabilitarlas.
+- **Validar en el front antes de enviar** (cantidades ≥ 1, 4 dígitos, `MM/AA`, al menos un ítem). Los errores de validación de campos del backend (`400` con `"Datos inválidos: ..."`) traen mensajes técnicos y en inglés, pensados para debug y no para el usuario. En cambio, los `message` de reglas de negocio (`409` de stock, evento finalizado, tarjeta vencida, etc.) están en español y se pueden mostrar tal cual.
+- **Nombres de lugares**: mostrar lo que devuelve la API, no valores hardcodeados. Algunos nombres en la base no llevan tilde (por ejemplo, la ciudad figura como `"Sao Paulo"`).
 
 ---
 
@@ -275,17 +278,17 @@ Reglas del body:
 - `entradas`, `habitaciones` y `vuelos` son opcionales, pero tiene que haber **al menos un ítem en total**.
 - Cada ítem de `habitaciones` es **una** habitación; para dos habitaciones se mandan dos ítems.
 - Las entradas tienen que ser del evento. Los hoteles tienen que estar en la ciudad del circuito. Los vuelos tienen que llegar a o salir de esa ciudad y no haber partido.
-- `fechaCheckOut` tiene que ser posterior a `fechaCheckIn`, y `fechaCheckIn` no puede ser anterior a hoy.
+- `fechaCheckOut` tiene que ser posterior a `fechaCheckIn`, y `fechaCheckIn` no puede ser anterior a hoy. Por regla de negocio, deben ser `fechaInicio − 1 día` y `fechaFin + 1 día` del evento (ver [Flujo del wizard](#flujo-del-wizard-de-compra)).
 - **No se mandan precios ni totales**: los calcula el backend.
 - Con una tarjeta nueva, **el número completo nunca viaja al backend**: solo los últimos 4 dígitos y el token de la pasarela.
 
-Ejemplo (São Paulo, 2 personas, 4 noches, tarjeta guardada):
+Ejemplo (Sao Paulo, 6–8 nov → check-in 5 nov y check-out 9 nov; 2 personas, tarjeta guardada):
 
 ```json
 {
   "idEvento": "c25c1812-9ced-4f15-ad77-842e52214f05",
   "entradas": [{ "idEntrada": "55555555-0000-4000-8000-000000000017", "cantidad": 2 }],
-  "habitaciones": [{ "idHabitacion": "77777777-0000-4000-8000-000000000021", "fechaCheckIn": "2026-11-05", "fechaCheckOut": "2026-11-09" }],
+  "habitaciones": [{ "idHabitacion": "843e9b11-1365-477a-8b69-2a8b167021ec", "fechaCheckIn": "2026-11-05", "fechaCheckOut": "2026-11-09" }],
   "vuelos": [
     { "idVuelo": "88888888-0000-4000-8000-000000000007", "cantidadPasajeros": 2 },
     { "idVuelo": "88888888-0000-4000-8000-000000000009", "cantidadPasajeros": 2 }
@@ -339,7 +342,7 @@ interface Reserva {
 }
 ```
 
-Para el ejemplo de arriba: 2 × 520 (entradas) + 4 noches × 190 (hotel) + 2 × 320 + 2 × 310 (vuelos) = `totalUsd: 3060.00`.
+Para el ejemplo de arriba: 2 × 520 (entradas) + 4 noches × 222.75 (Doble del Grand Mercure) + 2 × 320 + 2 × 310 (vuelos) = `totalUsd: 3191.00`. El id de la habitación es del microservicio de hoteles y puede cambiar (ver [Datos de prueba](#datos-de-prueba)).
 
 **Errores**
 
@@ -362,7 +365,10 @@ Para el ejemplo de arriba: 2 × 520 (entradas) + 4 noches × 190 (hotel) + 2 × 
 
 ## Datos de prueba
 
-Los países, ciudades, circuitos y eventos ya estaban cargados en Supabase. [`src/main/resources/db/seed.sql`](../src/main/resources/db/seed.sql) agrega el resto con ids fijos: entradas, hoteles, habitaciones, vuelos, clientes, tarjetas y Buenos Aires como origen de los vuelos.
+Hay dos orígenes de datos:
+
+- **Hoteles y habitaciones** los carga el **microservicio de hoteles** del equipo. Sus UUIDs los genera ese servicio y pueden cambiar si se recargan, así que **no hardcodearlos**: obtenerlos siempre con [`GET /events/{id}/hotels`](#get-eventsidhotels). Hoy hay 3 hoteles por ciudad de evento, cada uno con habitaciones `Single`, `Doble` y `Suite`.
+- **Todo lo demás** (entradas, vuelos, clientes, tarjetas y Buenos Aires como origen de los vuelos) lo carga [`src/main/resources/db/seed.sql`](../src/main/resources/db/seed.sql) con ids fijos. Países, ciudades, circuitos y eventos ya estaban cargados en Supabase.
 
 **Clientes** (para `X-Cliente-Id`)
 
@@ -371,21 +377,21 @@ Los países, ciudades, circuitos y eventos ya estaban cargados en Supabase. [`sr
 | `99999999-0000-4000-8000-000000000001` | Cliente Prueba | `aaaaaaaa-0000-4000-8000-000000000001` (Crédito 4242), `aaaaaaaa-0000-4000-8000-000000000002` (Débito 8812) |
 | `99999999-0000-4000-8000-000000000002` | Ana Pilotti | `aaaaaaaa-0000-4000-8000-000000000003` (Crédito 1111) |
 
-**Eventos 2026 y sus productos**
+**Eventos 2026, entradas y vuelos**
 
-Los productos usan UUIDs con prefijo por tabla y el número al final: entrada `017` = `55555555-0000-4000-8000-000000000017`, habitación `021` = `77777777-0000-4000-8000-000000000021`, vuelo `007` = `88888888-0000-4000-8000-000000000007`.
+Entradas y vuelos usan UUIDs con prefijo por tabla y el número al final: entrada `017` = `55555555-0000-4000-8000-000000000017`, vuelo `007` = `88888888-0000-4000-8000-000000000007`.
 
-| GP | `idEvento` | Fechas | Entradas | Hoteles → habitaciones | Vuelos ida / vuelta |
-|---|---|---|---|---|---|
-| Madrid | `992ae124-3d59-4adb-9fd2-f0e825c605e8` | 11–13 sep (ya pasó) | 001, 002, 003 | Gran Vía Madrid → 001, 002 · Barajas Express → 003, 004 | — |
-| Bakú | `f1a34d7f-3f76-446b-bed9-22fced10166e` | 25–27 sep (ya pasó) | 004, 005, 006 | Caspian Boulevard → 005, 006 · Old City Inn → 007, 008 | — |
-| Singapur | `28780217-2728-4321-865d-db4de3d9ec26` | 9–11 oct | 007, 008, 009 | Marina Bay Harbour → 009, 010 · Bugis Budget Stay → 011, 012 | 001 / 002 |
-| Austin | `b3ebbdfa-a64b-4e3f-a0a8-782af0b5b472` | 23–25 oct | 010, 011, 012 | Lone Star Suites → 013, 014 · Congress Avenue → 015, 016 | 003 / 004 |
-| Ciudad de México | `9f2762ef-6bde-4ee4-8c43-2a701e887162` | 30 oct – 1 nov | 013, 014, 015 | Reforma Central → 017, 018 · Casa Condesa → 019, 020 | 005 / 006 |
-| São Paulo | `c25c1812-9ced-4f15-ad77-842e52214f05` | 6–8 nov | 016, 017, 018 | Interlagos Plaza → 021, 022 · Paulista Grand → 023, 024 | 007, 008 / 009 |
-| Las Vegas | `0807f206-e3b8-4855-9ea7-2f8b8db1cfb7` | 19–21 nov | 019, 020, 021 | Strip View Resort → 025, 026 · Desert Inn Express → 027, 028 | 010 / 011 |
-| Lusail | `4513e753-0b39-4dbd-84a1-01eb594cbf09` | 27–29 nov | 022, 023, 024 | Lusail Marina → 029, 030 · Doha Corniche Suites → 031, 032 | 012 / 013 |
-| Abu Dabi | `691efae9-acc9-4c45-95dc-210acf720d83` | 4–6 dic | 025, 026, 027 | Yas Marina Waterfront → 033, 034 · Corniche Bay → 035, 036 | 014 / 015 |
+| GP | `idEvento` | Fechas | Entradas | Vuelos ida / vuelta |
+|---|---|---|---|---|
+| Madrid | `992ae124-3d59-4adb-9fd2-f0e825c605e8` | 11–13 sep (ya pasó) | 001, 002, 003 | — |
+| Bakú | `f1a34d7f-3f76-446b-bed9-22fced10166e` | 25–27 sep (ya pasó) | 004, 005, 006 | — |
+| Singapur | `28780217-2728-4321-865d-db4de3d9ec26` | 9–11 oct | 007, 008, 009 | 001 / 002 |
+| Austin | `b3ebbdfa-a64b-4e3f-a0a8-782af0b5b472` | 23–25 oct | 010, 011, 012 | 003 / 004 |
+| Ciudad de México | `9f2762ef-6bde-4ee4-8c43-2a701e887162` | 30 oct – 1 nov | 013, 014, 015 | 005 / 006 |
+| Sao Paulo | `c25c1812-9ced-4f15-ad77-842e52214f05` | 6–8 nov | 016, 017, 018 | 007, 008 / 009 |
+| Las Vegas | `0807f206-e3b8-4855-9ea7-2f8b8db1cfb7` | 19–21 nov | 019, 020, 021 | 010 / 011 |
+| Lusail | `4513e753-0b39-4dbd-84a1-01eb594cbf09` | 27–29 nov | 022, 023, 024 | 012 / 013 |
+| Abu Dabi | `691efae9-acc9-4c45-95dc-210acf720d83` | 4–6 dic | 025, 026, 027 | 014 / 015 |
 
 En cada evento las entradas van en orden General, Asiento Numerado y VIP. Todos los vuelos salen de Buenos Aires o vuelven ahí. Madrid y Bakú no tienen vuelos porque sus fechas ya pasaron; siguen figurando como `Proximo` en la base.
 
@@ -394,12 +400,13 @@ En cada evento las entradas van en orden General, Asiento Numerado y VIP. Todos 
 | Caso | Datos | Resultado esperado |
 |---|---|---|
 | Entrada agotada | entrada `021` (Paddock Club, Las Vegas) | `409` |
-| Habitación agotada | habitación `028` (Doble, Desert Inn Express, Las Vegas) | `409` |
-| Último asiento | vuelo `008` (LATAM a São Paulo, 1 asiento): la primera compra de 1 pasajero pasa, la segunda da `409` | `201`, luego `409` |
+| Último asiento | vuelo `008` (LATAM a Sao Paulo, 1 asiento): la primera compra de 1 pasajero pasa, la segunda da `409` | `201`, luego `409` |
 | Evento ya pasado | evento Madrid con entrada `001` | `400` |
-| Vuelo ya partido | vuelo `016` (a São Paulo, 1 sep) con el evento São Paulo. No aparece en `GET /flights` | `400` |
-| Entrada de otro evento | entrada `001` (Madrid) con el evento São Paulo | `400` |
-| Hotel de otra ciudad | habitación `001` (Madrid) con el evento São Paulo | `400` |
+| Vuelo ya partido | vuelo `016` (a Sao Paulo, 1 sep) con el evento Sao Paulo. No aparece en `GET /flights` | `400` |
+| Entrada de otro evento | entrada `001` (Madrid) con el evento Sao Paulo | `400` |
+| Hotel de otra ciudad | una habitación de `GET /events/{idMadrid}/hotels` con el evento Sao Paulo | `400` |
 | Tarjeta de otro cliente | cliente `99999999-0000-4000-8000-000000000001` pagando con `idMetodoPago` `aaaaaaaa-0000-4000-8000-000000000003` | `404` |
 
-Las compras de prueba descuentan stock de verdad. Para volver al estado inicial hay que restaurar `stock_disponible` / `stock_asientos` con los valores del seed y borrar las reservas creadas.
+Hoy no hay ninguna habitación agotada cargada. Para probar el `409` de hotel hay que elegir una habitación con poco stock (varias Suites tienen `stockDisponible: 1`) y comprarla dos veces.
+
+Las compras de prueba descuentan stock de verdad. Para volver al estado inicial hay que devolver el stock y borrar las reservas creadas (ver el SQL de limpieza en [`checkout.md`](./checkout.md#limpiar-compras-de-prueba)).
