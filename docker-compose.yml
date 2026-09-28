@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: grand-prix-tracker-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: grandprixtracker
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./src/main/resources/db/notifications_schema.sql:/docker-entrypoint-initdb.d/01_notifications.sql
+
+volumes:
+  pgdata:

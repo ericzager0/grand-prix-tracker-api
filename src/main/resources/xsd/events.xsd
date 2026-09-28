@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:tns="http://uade.com/grandprixtracker/soap/events"
+           targetNamespace="http://uade.com/grandprixtracker/soap/events"
+           elementFormDefault="qualified">
+
+    <!-- ============================================================= -->
+    <!-- OPERACIÓN 1: Obtener Evento por ID                            -->
+    <!-- ============================================================= -->
+    <xs:element name="getEventByIdRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="id" type="xs:string"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="getEventByIdResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="evento" type="tns:EventoSoapDto" minOccurs="0"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- ============================================================= -->
+    <!-- OPERACIÓN 2: Listar Eventos por Temporada                     -->
+    <!-- ============================================================= -->
+    <xs:element name="getEventsByTemporadaRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="temporada" type="xs:int"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="getEventsByTemporadaResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="eventos" type="tns:EventoSoapDto" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- ============================================================= -->
+    <!-- OPERACIÓN 3: Listar Todos los Eventos                         -->
+    <!-- ============================================================= -->
+    <xs:element name="getAllEventsRequest">
+        <xs:complexType>
+            <xs:sequence/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="getAllEventsResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="eventos" type="tns:EventoSoapDto" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- ============================================================= -->
+    <!-- TIPOS COMPLEJOS DEL DOMINIO                                  -->
+    <!-- ============================================================= -->
+    <xs:complexType name="EventoSoapDto">
+        <xs:sequence>
+            <xs:element name="idEvento" type="xs:string"/>
+            <xs:element name="temporada" type="xs:int"/>
+            <xs:element name="fechaInicio" type="xs:string"/>
+            <xs:element name="fechaFin" type="xs:string"/>
+            <xs:element name="estado" type="xs:string"/>
+            <xs:element name="circuito" type="tns:CircuitoSoapDto" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="CircuitoSoapDto">
+        <xs:sequence>
+            <xs:element name="idCircuito" type="xs:string" minOccurs="0"/>
+            <xs:element name="nombre" type="xs:string"/>
+            <xs:element name="longitudKm" type="xs:double" minOccurs="0"/>
+            <xs:element name="curvas" type="xs:int" minOccurs="0"/>
+            <xs:element name="vueltas" type="xs:int" minOccurs="0"/>
+            <xs:element name="mapaSvgUrl" type="xs:string" minOccurs="0"/>
+            <xs:element name="ciudad" type="tns:CiudadSoapDto" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="CiudadSoapDto">
+        <xs:sequence>
+            <xs:element name="idCiudad" type="xs:string" minOccurs="0"/>
+            <xs:element name="nombre" type="xs:string"/>
+            <xs:element name="pais" type="tns:PaisSoapDto" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="PaisSoapDto">
+        <xs:sequence>
+            <xs:element name="idPais" type="xs:string" minOccurs="0"/>
+            <xs:element name="nombre" type="xs:string"/>
+            <xs:element name="codigoIso" type="xs:string" minOccurs="0"/>
+            <xs:element name="continente" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+</xs:schema>
