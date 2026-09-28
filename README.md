@@ -33,28 +33,46 @@ src/
     │       │
     │       ├── GrandPrixTrackerApplication.java   ← Punto de entrada
     │       │
-    │       ├── auth/                              ← Feature: autenticación
-    │       │   ├── controller/
-    │       │   ├── service/
-    │       │   ├── repository/
-    │       │   ├── model/
-    │       │   └── dto/
+    │       ├── event/                             ← Calendario: eventos, circuitos, ciudades, países
+    │       ├── ticket/                            ← Entradas (tribunas) de cada evento
+    │       ├── hotel/                             ← Hoteles y habitaciones
+    │       ├── flight/                            ← Vuelos
+    │       ├── payment/                           ← Métodos de pago y cobro (simulado)
+    │       ├── booking/                           ← Checkout: CheckoutFacade + reservas
+    │       ├── user/                              ← Clientes
+    │       ├── auth/                              ← Autenticación (vacío, pendiente de Supabase Auth)
     │       │
-    │       ├── user/                              ← Feature: usuarios
-    │       │   ├── controller/
-    │       │   ├── service/
-    │       │   ├── repository/
-    │       │   ├── model/
-    │       │   └── dto/
-    │       │
-    │       │   ... (más features a medida que crezca el proyecto)
-    │       │
-    │       ├── config/                            ← Configuración global
-    │       └── shared/                            ← Clases compartidas entre features
+    │       ├── config/                            ← Configuración global (CORS, Clock)
+    │       └── shared/                            ← Excepciones y respuesta estándar de la API
     │
     └── resources/
-        └── application.properties                 ← Configuración de la app
+        ├── application.properties                 ← Configuración de la app
+        └── db/
+            ├── indexes.sql                        ← Índices (ya aplicados en Supabase)
+            └── seed.sql                           ← Datos de prueba (ya aplicados en Supabase)
 ```
+
+Cada feature sigue la estructura `controller/`, `service/`, `repository/`, `model/` y `dto/` descripta abajo, con solo las carpetas que necesita.
+
+---
+
+## Correr en local
+
+La app se conecta a la base de Supabase configurada en `application.properties`. Queda en `http://localhost:8080`.
+
+```bash
+./mvnw spring-boot:run
+./mvnw test
+```
+
+El proyecto apunta a **Java 25**. Con JDK 21 se puede compilar y testear igual, pasando `-Dmaven.compiler.release=21`:
+
+```bash
+./mvnw spring-boot:run -Dmaven.compiler.release=21
+./mvnw test -Dmaven.compiler.release=21
+```
+
+Si el IDE compiló antes con Java 25, Maven con JDK 21 falla con `class file version 69.0`. Se resuelve borrando `target/` (o con `./mvnw clean`).
 
 ---
 
@@ -125,3 +143,15 @@ shared/
 - **Spring Boot 4.1.1**
 - **Maven 3.9.11**
 - **PostgreSQL** (via Supabase)
+
+---
+
+## Documentación adicional
+
+La carpeta [`docs/`](./docs/) contiene documentación técnica adicional:
+
+- [`docs/api.md`](./docs/api.md) — Referencia de endpoints: qué recibe, qué devuelve y qué hace cada uno, cómo encadenarlos en el wizard de compra y datos de prueba. **Punto de partida para quien trabaje en el frontend.**
+- [`docs/db.md`](./docs/db.md) — Esquema de la base de datos (Supabase / PostgreSQL).
+- [`docs/checkout.md`](./docs/checkout.md) — Compra de paquetes: reglas de negocio, arquitectura y limitaciones.
+
+A medida que crezca el proyecto, se van a ir sumando ahí documentos explicando la lógica de negocio de cada feature y decisiones de arquitectura relevantes.
