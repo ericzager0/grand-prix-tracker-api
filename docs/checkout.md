@@ -16,6 +16,7 @@ El contrato del endpoint (`POST /bookings`: headers, body, respuesta y errores) 
    - Las entradas tienen que pertenecer al evento elegido.
    - Los hoteles tienen que estar en la ciudad del circuito del evento.
    - Los vuelos tienen que llegar a **o** salir de la ciudad del circuito (ida o vuelta) y todavía no haber partido.
+   - La reserva guarda el evento (`reservas.id_evento`), para que `GET /bookings` pueda mostrar de qué Gran Premio es.
    - No se puede comprar para un evento en estado `Finalizado` **ni para uno cuya `fecha_fin` ya pasó**, aunque figure como `Proximo`. La columna `estado` se carga a mano y puede quedar desactualizada; las fechas son la fuente confiable.
 4. **Stock atómico.** El stock se descuenta con `UPDATE ... SET stock = stock - n WHERE id = ? AND stock >= n`. Si la condición no se cumple (otro usuario compró antes), se responde `409`. No hay lecturas previas de stock que puedan quedar desactualizadas.
 5. **Orden de descuento.** Dentro de cada tipo de producto, los ítems se procesan ordenados por id, para que dos compras concurrentes sobre los mismos ítems no se bloqueen mutuamente (deadlock).
@@ -25,6 +26,8 @@ El contrato del endpoint (`POST /bookings`: headers, body, respuesta y errores) 
 ## Arquitectura
 
 `BookingController` → `CheckoutFacade` → `TicketService`, `HotelService`, `FlightService`, `PaymentService`.
+
+Las consultas de reservas (`GET /bookings` y `GET /bookings/{idReserva}`) van por `ReservaService`, fuera del facade porque no compran nada. El checkout y las consultas arman la respuesta con el mismo `ReservaMapper`, así que las tres devuelven la misma forma.
 
 El `CheckoutFacade` (patrón Facade) es el único punto de entrada del checkout y coordina a los servicios de cada producto. Hoy cada servicio trabaja contra las tablas de Supabase; cuando se integren los sistemas externos (hoteles vía SOAP, ticketera vía REST), se cambia la implementación de cada servicio sin tocar el endpoint ni el facade.
 
@@ -38,7 +41,7 @@ Cada servicio de producto tiene dos tipos de operación:
 | `hotel` | `GET /events/{id}/hotels` | `HotelService.reservar` |
 | `flight` | `GET /events/{id}/flights` | `FlightService.reservar` |
 | `payment` | `GET /payment-methods` | `PaymentService.cobrar` |
-| `booking` | — | `POST /bookings` → `CheckoutFacade.checkout` |
+| `booking` | `GET /bookings`, `GET /bookings/{idReserva}` (`ReservaService`) | `POST /bookings` → `CheckoutFacade.checkout` |
 
 Las fechas y horas se toman de un `Clock` inyectado (`ClockConfig`, en UTC), para que las validaciones que dependen de "hoy" se puedan testear con una fecha fija.
 
@@ -46,6 +49,8 @@ Las fechas y horas se toman de un `Clock` inyectado (`ClockConfig`, en UTC), par
 
 - **Stock de hotel sin fechas.** `habitaciones_hotel.stock_disponible` es un contador único, no por noche: reservar una habitación la descuenta para todo el evento, sin importar las fechas. Si se necesita disponibilidad por fecha, hace falta otro modelo de datos.
 - **Regla de fechas de hotel no exigida por el backend.** Por negocio, el check-in es 1 día antes de `fecha_inicio` del evento y el check-out 1 día después de `fecha_fin` (carrera de jueves a domingo → miércoles a lunes). Hoy la aplica el front; el backend solo valida que check-out sea posterior a check-in y que check-in no sea en el pasado. Para exigirla, el checkout debería rechazar otras fechas o directamente calcularlas él y dejar de recibirlas en el body.
+- **Precio unitario no guardado.** Las tablas `reserva_detalle_*` guardan el subtotal pero no el precio unitario. La respuesta lo calcula como `subtotal / cantidad` (o `/ noches`, `/ pasajeros`), que da exactamente el precio pagado porque el subtotal se guardó como `precio × cantidad`.
+- **Reservas viejas sin evento.** Las reservas anteriores a `reservas.id_evento` se completaron con un backfill; las que no se pudieron resolver (por ejemplo, de solo vuelos) devuelven `evento: null`. Ver [`db.md`](./db.md#reservas).
 - **Traslados.** `reservas.incluye_transporte` existe en la base pero no hay tabla de traslados; hoy siempre queda en `false`.
 - **Cancelaciones.** No hay endpoint para cancelar una reserva ni para devolver stock.
 - **Estado de los eventos.** `eventos_f1.estado` no se actualiza solo. El checkout se protege usando `fecha_fin`, pero el calendario sigue mostrando el estado que figura en la base.

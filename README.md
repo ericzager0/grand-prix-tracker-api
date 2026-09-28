@@ -49,6 +49,7 @@ src/
         ├── application.properties                 ← Configuración de la app
         └── db/
             ├── indexes.sql                        ← Índices (ya aplicados en Supabase)
+            ├── reservas_id_evento.sql             ← Columna reservas.id_evento + backfill
             └── seed.sql                           ← Datos de prueba (ya aplicados en Supabase)
 ```
 

@@ -1,5 +1,6 @@
 package com.uade.grandprixtracker.booking.model;
 
+import com.uade.grandprixtracker.event.model.EventoF1;
 import com.uade.grandprixtracker.payment.model.MetodoPago;
 import com.uade.grandprixtracker.user.model.Cliente;
 import jakarta.persistence.CascadeType;
@@ -38,6 +39,11 @@ public class Reserva {
     @JoinColumn(name = "id_metodo_pago")
     private MetodoPago metodoPago;
 
+    // Nullable: las reservas anteriores a la columna cuyo evento no se pudo deducir quedan sin evento.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_evento")
+    private EventoF1 evento;
+
     @Column(name = "codigo_confirmacion", nullable = false, unique = true)
     private String codigoConfirmacion;
 
@@ -74,8 +80,9 @@ public class Reserva {
     public Reserva() {
     }
 
-    public Reserva(Cliente cliente, MetodoPago metodoPago, String codigoConfirmacion, String estado, OffsetDateTime fechaCompra) {
+    public Reserva(Cliente cliente, EventoF1 evento, MetodoPago metodoPago, String codigoConfirmacion, String estado, OffsetDateTime fechaCompra) {
         this.cliente = cliente;
+        this.evento = evento;
         this.metodoPago = metodoPago;
         this.codigoConfirmacion = codigoConfirmacion;
         this.estado = estado;
@@ -109,6 +116,10 @@ public class Reserva {
 
     public Cliente getCliente() {
         return cliente;
+    }
+
+    public EventoF1 getEvento() {
+        return evento;
     }
 
     public MetodoPago getMetodoPago() {

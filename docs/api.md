@@ -16,6 +16,8 @@ Contrato HTTP del backend para quien consuma la API, principalmente el frontend 
 | `GET` | [`/events/{id}/flights`](#get-eventsidflights) | Vuelos de ida y vuelta a la ciudad del evento |
 | `GET` | [`/payment-methods`](#get-payment-methods) | Tarjetas guardadas del cliente |
 | `POST` | [`/bookings`](#post-bookings) | Comprar el paquete |
+| `GET` | [`/bookings`](#get-bookings) | Reservas del cliente (perfil) |
+| `GET` | [`/bookings/{idReserva}`](#get-bookingsidreserva) | Detalle de una reserva ("Ver itinerario completo") |
 
 ---
 
@@ -30,7 +32,7 @@ Contrato HTTP del backend para quien consuma la API, principalmente el frontend 
 
 ### Identificación del cliente (temporal)
 
-Todavía no hay autenticación. Los endpoints que dependen del cliente (`GET /payment-methods` y `POST /bookings`) reciben su id en el header **`X-Cliente-Id`**. Para desarrollo, usar el cliente de prueba `99999999-0000-4000-8000-000000000001`.
+Todavía no hay autenticación. Los endpoints que dependen del cliente (`GET /payment-methods`, `POST /bookings`, `GET /bookings` y `GET /bookings/{idReserva}`) reciben su id en el header **`X-Cliente-Id`**. Para desarrollo, usar el cliente de prueba `99999999-0000-4000-8000-000000000001`.
 
 Cuando se integre Supabase Auth, ese header se reemplaza por `Authorization: Bearer <jwt>` y el backend toma el cliente del claim `sub`. El resto del contrato no cambia.
 
@@ -297,19 +299,37 @@ Ejemplo (Sao Paulo, 6–8 nov → check-in 5 nov y check-out 9 nov; 2 personas, 
 }
 ```
 
-**Respuesta `201`**: `ApiResponse<Reserva>`, con `message: "Reserva confirmada"`
+**Respuesta `201`**: `ApiResponse<Reserva>`, con `message: "Reserva confirmada"`. Es la **misma forma** que devuelven `GET /bookings` y `GET /bookings/{idReserva}`:
 
 ```ts
 interface Reserva {
   idReserva: string;
   codigoConfirmacion: string;  // "GP-XXXXXXXX", para mostrarle al usuario
-  estado: "Pagada";
+  estado: "Pendiente" | "Pagada" | "Cancelada";  // el POST siempre devuelve "Pagada"
   fechaCompra: string;         // ISO-8601
   totalUsd: number;
   incluyeEntrada: boolean;
   incluyeHotel: boolean;
   incluyeVuelo: boolean;
-  idMetodoPago: string;        // si se pagó con tarjeta nueva, es el id con el que quedó guardada
+  idMetodoPago: string | null; // si se pagó con tarjeta nueva, es el id con el que quedó guardada
+  metodoPago: {                // nuevo. Nunca incluye el token de la pasarela
+    idMetodoPago: string;
+    tipo: "Credito" | "Debito";
+    ultimos4Digitos: string;
+  } | null;
+  evento: {                    // nuevo. null si la reserva es anterior al cambio y no se pudo deducir el evento
+    idEvento: string;
+    temporada: number;
+    fechaInicio: string;       // "YYYY-MM-DD"
+    fechaFin: string;          // "YYYY-MM-DD"
+    circuito: {
+      nombre: string;
+      ciudad: {
+        nombre: string;
+        pais: { nombre: string; codigoIso: string };
+      };
+    };
+  } | null;
   entradas: {
     idEntrada: string;
     nombreTribuna: string;
@@ -320,6 +340,7 @@ interface Reserva {
   }[];
   habitaciones: {
     idHabitacion: string;
+    idHotel: string;           // nuevo
     hotel: string;             // nombre del hotel
     tipo: "Single" | "Doble" | "Suite";
     fechaCheckIn: string;
@@ -342,6 +363,8 @@ interface Reserva {
 }
 ```
 
+Los campos marcados como nuevos se agregaron sin cambiar los existentes. Los precios unitarios y subtotales son **los de la compra**, no los precios actuales: si después cambia el precio de una tribuna, la reserva sigue mostrando lo que se pagó. En el `POST`, `idMetodoPago`, `metodoPago` y `evento` siempre vienen completos.
+
 Para el ejemplo de arriba: 2 × 520 (entradas) + 4 noches × 222.75 (Doble del Grand Mercure) + 2 × 320 + 2 × 310 (vuelos) = `totalUsd: 3191.00`. El id de la habitación es del microservicio de hoteles y puede cambiar (ver [Datos de prueba](#datos-de-prueba)).
 
 **Errores**
@@ -352,11 +375,91 @@ Para el ejemplo de arriba: 2 × 520 (entradas) + 4 noches × 222.75 (Doble del G
 | `404` | No existe el cliente, el evento, alguna entrada, habitación o vuelo, o el `idMetodoPago` no es del cliente. |
 | `409` | Sin stock suficiente. El `message` indica cuál, ej. `"No hay stock suficiente para la tribuna Paddock Club"`. |
 
+### `GET /bookings`
+
+Reservas del cliente, de la más nueva a la más vieja (`fechaCompra` descendente). Incluye todas, cualquiera sea su `estado`; el front decide cuáles mostrar.
+
+**Headers**: `X-Cliente-Id` (ver [Identificación del cliente](#identificación-del-cliente-temporal)).
+
+**Respuesta `200`**: `ApiResponse<Reserva[]>`, con la misma forma de `Reserva` que el [`POST /bookings`](#post-bookings). Si el cliente no tiene reservas, `data` es `[]`.
+
+Recomendaciones para la sección "Reservas" del perfil:
+
+- **Próximas y pasadas**: separarlas con `evento.fechaFin` (pasada si es anterior a hoy), no con `estado`. Si `evento` es `null` (reservas viejas que no se pudieron asociar), usar la fecha más tardía entre `fechaCheckOut` de las habitaciones y `fechaLlegada` de los vuelos. Las fechas `"YYYY-MM-DD"` se comparan como texto, sin pasar por `Date`, para que no se corran un día.
+- **Tarjeta**: nombre del Gran Premio con `evento.circuito.nombre`, ciudad y país con `evento.circuito.ciudad`, y fechas con `evento.fechaInicio` y `evento.fechaFin`. Qué incluye, con `incluyeEntrada`, `incluyeHotel` e `incluyeVuelo`. Para el detalle corto: `entradas[i].nombreTribuna` × `cantidad`, `habitaciones[i].hotel` + `cantidadNoches` y `vuelos[i].aerolinea` + `origen` → `destino`. El total es `totalUsd`.
+- **"Ver itinerario completo"**: la lista ya trae todo el detalle, así que se puede abrir sin otra llamada. `GET /bookings/{idReserva}` sirve para entrar directo por URL o para refrescar.
+
+Ejemplo (una reserva con el paquete del ejemplo del `POST`):
+
+```json
+{
+  "success": true,
+  "message": "Reservas obtenidas correctamente",
+  "data": [
+    {
+      "idReserva": "4f1c2a9e-8b7d-4c3a-9e21-7a5b6c4d3e2f",
+      "codigoConfirmacion": "GP-V83PRJ6T",
+      "estado": "Pagada",
+      "fechaCompra": "2026-09-28T19:37:41.787325Z",
+      "totalUsd": 3191.00,
+      "incluyeEntrada": true,
+      "incluyeHotel": true,
+      "incluyeVuelo": true,
+      "idMetodoPago": "aaaaaaaa-0000-4000-8000-000000000001",
+      "metodoPago": { "idMetodoPago": "aaaaaaaa-0000-4000-8000-000000000001", "tipo": "Credito", "ultimos4Digitos": "4242" },
+      "evento": {
+        "idEvento": "c25c1812-9ced-4f15-ad77-842e52214f05",
+        "temporada": 2026,
+        "fechaInicio": "2026-11-06",
+        "fechaFin": "2026-11-08",
+        "circuito": {
+          "nombre": "Autódromo José Carlos Pace (Interlagos)",
+          "ciudad": { "nombre": "Sao Paulo", "pais": { "nombre": "Brasil", "codigoIso": "BR" } }
+        }
+      },
+      "entradas": [
+        { "idEntrada": "55555555-0000-4000-8000-000000000017", "nombreTribuna": "Arquibancada A", "tipo": "Asiento Numerado", "cantidad": 2, "precioUnitarioUsd": 520.00, "subtotalUsd": 1040.00 }
+      ],
+      "habitaciones": [
+        { "idHabitacion": "843e9b11-1365-477a-8b69-2a8b167021ec", "idHotel": "36888b5a-398e-4707-96c4-98f543183ea6", "hotel": "Grand Mercure São Paulo Interlagos", "tipo": "Doble", "fechaCheckIn": "2026-11-05", "fechaCheckOut": "2026-11-09", "cantidadNoches": 4, "precioPorNocheUsd": 222.75, "subtotalUsd": 891.00 }
+      ],
+      "vuelos": [
+        { "idVuelo": "88888888-0000-4000-8000-000000000007", "aerolinea": "Aerolíneas Argentinas", "origen": "Buenos Aires", "destino": "Sao Paulo", "fechaSalida": "2026-11-05T12:00:00Z", "fechaLlegada": "2026-11-05T15:00:00Z", "cantidadPasajeros": 2, "precioUnitarioUsd": 320.00, "subtotalUsd": 640.00 },
+        { "idVuelo": "88888888-0000-4000-8000-000000000009", "aerolinea": "Aerolíneas Argentinas", "origen": "Sao Paulo", "destino": "Buenos Aires", "fechaSalida": "2026-11-09T19:00:00Z", "fechaLlegada": "2026-11-09T22:00:00Z", "cantidadPasajeros": 2, "precioUnitarioUsd": 310.00, "subtotalUsd": 620.00 }
+      ]
+    }
+  ]
+}
+```
+
+**Errores**
+
+| Código | Casos |
+|---|---|
+| `400` | Falta `X-Cliente-Id` (`"Falta el header requerido: X-Cliente-Id"`) o no es UUID (`"Valor inválido para X-Cliente-Id"`). |
+| `404` | El cliente no existe (`"Cliente no encontrado"`). |
+
+### `GET /bookings/{idReserva}`
+
+Una reserva del cliente, con la misma forma que cada ítem de `GET /bookings`: entradas, habitaciones con fechas y noches, vuelos con horarios y el medio de pago usado.
+
+**Headers**: `X-Cliente-Id`.
+
+**Respuesta `200`**: `ApiResponse<Reserva>`, con `message: "Reserva obtenida correctamente"`.
+
+**Errores**
+
+| Código | Casos |
+|---|---|
+| `400` | Falta `X-Cliente-Id` o no es UUID · `idReserva` no es UUID (`"Valor inválido para idReserva"`). |
+| `404` | El cliente no existe (`"Cliente no encontrado"`) · la reserva no existe **o es de otro cliente** (`"Reserva no encontrada"`, sin distinguir entre los dos casos para no revelar que la reserva existe). |
+
+Los `message` de estos errores están en español y se pueden mostrar tal cual.
+
 ---
 
 ## Endpoints que todavía no existen
 
-- **Reservas del cliente** (`ReservasView` del perfil) y **detalle de una reserva**. La pantalla de confirmación no los necesita: `POST /bookings` ya devuelve todo.
 - **Alta y baja de tarjetas** (`AddPaymentModal` del perfil). Hoy una tarjeta nueva solo se guarda al usarla en una compra.
 - **Datos del cliente** (`DatosView` del perfil) y registro. Llegan con Supabase Auth.
 - **Traslados**: no existen en la base (ver [`checkout.md`](./checkout.md#limitaciones-conocidas)).

@@ -9,7 +9,7 @@ No hay triggers ni funciones propias en el esquema `public`.
 ## Diagrama de dominios
 
 - **Geografía**: `paises` → `ciudades` → `circuitos` / `hoteles` / `vuelos` (origen y destino)
-- **Evento**: `circuitos` → `eventos_f1` → `entradas_gradas`
+- **Evento**: `circuitos` → `eventos_f1` → `entradas_gradas` / `reservas`
 - **Alojamiento**: `hoteles` → `habitaciones_hotel`
 - **Cliente**: `clientes` → `metodos_pago`
 - **Reserva**: `reservas` (cabecera) + tablas de detalle por tipo de producto (`reserva_detalle_entradas`, `reserva_detalle_hoteles`, `reserva_detalle_vuelos`)
@@ -75,7 +75,7 @@ Un evento es un Gran Premio en una temporada/circuito determinado.
 | `estado` | varchar | CHECK: `Proximo`, `En curso`, `Finalizado`. Default `'Proximo'` |
 | `created_at` | timestamptz | |
 
-Referenciada por: `entradas_gradas.id_evento`
+Referenciada por: `entradas_gradas.id_evento`, `reservas.id_evento`
 
 ### `entradas_gradas`
 
@@ -195,6 +195,7 @@ Cabecera de una reserva. Los flags `incluye_*` indican qué tipos de producto co
 | `id_reserva` | uuid | PK |
 | `id_cliente` | uuid | FK → `clientes.id_cliente` |
 | `id_metodo_pago` | uuid | FK → `metodos_pago.id_metodo`, nullable |
+| `id_evento` | uuid | FK → `eventos_f1.id_evento`, nullable. Gran Premio de la reserva; lo guarda el checkout. Ver nota abajo |
 | `codigo_confirmacion` | varchar | UNIQUE |
 | `total_usd` | numeric | |
 | `estado` | varchar | CHECK: `Pendiente`, `Pagada`, `Cancelada`. Default `'Pendiente'` |
@@ -205,6 +206,8 @@ Cabecera de una reserva. Los flags `incluye_*` indican qué tipos de producto co
 | `incluye_transporte` | boolean | default `false` |
 
 Referenciada por: `reserva_detalle_entradas.id_reserva`, `reserva_detalle_hoteles.id_reserva`, `reserva_detalle_vuelos.id_reserva`
+
+> Nota sobre `id_evento`: se agregó el 2026-09-28 con [`src/main/resources/db/reservas_id_evento.sql`](../src/main/resources/db/reservas_id_evento.sql). Es nullable porque las reservas anteriores se completaron con un backfill: por entradas (exacto) y, si no tenían entradas, por hotel (ciudad del hotel = ciudad del circuito y `fecha_check_in = fecha_inicio - 1`). Las que no se pudieron resolver, por ejemplo las de solo vuelos, quedan en `null`. Todas las reservas creadas desde entonces lo tienen.
 
 > Nota: existe el flag `incluye_transporte` pero no hay una tabla `reserva_detalle_transporte` ni tabla de transporte en el esquema actual — a confirmar si es funcionalidad pendiente de implementar.
 
@@ -280,9 +283,10 @@ Además de los índices de PK y UNIQUE que crea Postgres, existen estos (script 
 | `eventos_f1` | `idx_eventos_f1_id_circuito` | `id_circuito` |
 | `eventos_f1` | `idx_eventos_f1_temp_fecha` | `temporada, fecha_inicio` |
 | `eventos_f1` | `idx_eventos_f1_estado` | `estado` |
+| `reservas` | `idx_reservas_id_evento` | `id_evento` (en [`reservas_id_evento.sql`](../src/main/resources/db/reservas_id_evento.sql)) |
 | `notificaciones` | ver arriba | |
 
-Las FKs de entradas, hoteles, habitaciones, vuelos y reservas no tienen índice propio. Con el volumen actual no hace falta; si las tablas crecen, conviene indexar `entradas_gradas.id_evento`, `hoteles.id_ciudad`, `habitaciones_hotel.id_hotel` y `vuelos.origen_id_ciudad` / `destino_id_ciudad`, que son las columnas por las que filtran los listados del wizard.
+Salvo `reservas.id_evento`, las FKs de entradas, hoteles, habitaciones, vuelos y reservas no tienen índice propio. Con el volumen actual no hace falta; si las tablas crecen, conviene indexar `entradas_gradas.id_evento`, `hoteles.id_ciudad`, `habitaciones_hotel.id_hotel` y `vuelos.origen_id_ciudad` / `destino_id_ciudad`, que son las columnas por las que filtran los listados del wizard, y `reservas (id_cliente, fecha_compra DESC)` para `GET /bookings`.
 
 ---
 

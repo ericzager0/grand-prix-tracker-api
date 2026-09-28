@@ -8,12 +8,13 @@ import com.uade.grandprixtracker.booking.dto.CheckoutRequestDto;
 import com.uade.grandprixtracker.booking.dto.CheckoutRequestDto.EntradaItem;
 import com.uade.grandprixtracker.booking.dto.CheckoutRequestDto.HabitacionItem;
 import com.uade.grandprixtracker.booking.dto.CheckoutRequestDto.VueloItem;
-import com.uade.grandprixtracker.booking.dto.CheckoutResponseDto;
+import com.uade.grandprixtracker.booking.dto.ReservaResponseDto;
 import com.uade.grandprixtracker.booking.model.Reserva;
 import com.uade.grandprixtracker.booking.repository.ReservaRepository;
 import com.uade.grandprixtracker.event.model.Circuito;
 import com.uade.grandprixtracker.event.model.Ciudad;
 import com.uade.grandprixtracker.event.model.EventoF1;
+import com.uade.grandprixtracker.event.model.Pais;
 import com.uade.grandprixtracker.event.repository.EventoF1Repository;
 import com.uade.grandprixtracker.flight.model.Vuelo;
 import com.uade.grandprixtracker.flight.service.FlightService;
@@ -41,6 +42,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -78,7 +80,7 @@ class CheckoutFacadeTest {
         idCiudad = UUID.randomUUID();
 
         cliente = new Cliente(idCliente, "Ayrton", "Senna", "ayrton@example.com", null);
-        ciudad = new Ciudad(idCiudad, "São Paulo", null, null);
+        ciudad = new Ciudad(idCiudad, "São Paulo", new Pais(UUID.randomUUID(), "Brasil", "BR", "latin-america", null), null);
         Circuito circuito = new Circuito(UUID.randomUUID(), "Interlagos", null, null, null, null, ciudad, null);
         evento = new EventoF1(idEvento, 2026, LocalDate.of(2026, 11, 6), LocalDate.of(2026, 11, 8), "Proximo", circuito, null);
         metodoPago = new MetodoPago(UUID.randomUUID(), cliente, "Credito", "4242", "tok_test", "12/28", null);
@@ -114,7 +116,7 @@ class CheckoutFacadeTest {
                 List.of(new VueloItem(vuelo.getIdVuelo(), 2)),
                 pago);
 
-        CheckoutResponseDto response = checkoutFacade.checkout(idCliente, request);
+        ReservaResponseDto response = checkoutFacade.checkout(idCliente, request);
 
         // 2 x 350 + 4 noches x 200 + 2 x 500
         assertEquals(new BigDecimal("2500.00"), response.totalUsd());
@@ -129,7 +131,27 @@ class CheckoutFacadeTest {
         assertEquals("Hotel Paulista", response.habitaciones().getFirst().hotel());
         assertEquals("Buenos Aires", response.vuelos().getFirst().origen());
         assertEquals("São Paulo", response.vuelos().getFirst().destino());
-        verify(reservaRepository).save(any(Reserva.class));
+
+        // Precios unitarios de la compra
+        assertEquals(new BigDecimal("350.00"), response.entradas().getFirst().precioUnitarioUsd());
+        assertEquals(new BigDecimal("200.00"), response.habitaciones().getFirst().precioPorNocheUsd());
+        assertEquals(new BigDecimal("500.00"), response.vuelos().getFirst().precioUnitarioUsd());
+
+        // Campos nuevos del contrato
+        assertEquals(hotel.getIdHotel(), response.habitaciones().getFirst().idHotel());
+        assertEquals(metodoPago.getIdMetodo(), response.metodoPago().idMetodoPago());
+        assertEquals("Credito", response.metodoPago().tipo());
+        assertEquals("4242", response.metodoPago().ultimos4Digitos());
+        assertEquals(idEvento, response.evento().idEvento());
+        assertEquals(LocalDate.of(2026, 11, 6), response.evento().fechaInicio());
+        assertEquals("Interlagos", response.evento().circuito().nombre());
+        assertEquals("São Paulo", response.evento().circuito().ciudad().nombre());
+        assertEquals("BR", response.evento().circuito().ciudad().pais().codigoIso());
+
+        // El evento queda persistido en la reserva
+        ArgumentCaptor<Reserva> guardada = ArgumentCaptor.forClass(Reserva.class);
+        verify(reservaRepository).save(guardada.capture());
+        assertSame(evento, guardada.getValue().getEvento());
     }
 
     @Test
@@ -144,7 +166,7 @@ class CheckoutFacadeTest {
         CheckoutRequestDto request = new CheckoutRequestDto(
                 idEvento, List.of(new EntradaItem(entrada.getIdEntrada(), 1)), null, null, pago);
 
-        CheckoutResponseDto response = checkoutFacade.checkout(idCliente, request);
+        ReservaResponseDto response = checkoutFacade.checkout(idCliente, request);
 
         assertEquals(new BigDecimal("1200.00"), response.totalUsd());
         assertTrue(response.incluyeEntrada());

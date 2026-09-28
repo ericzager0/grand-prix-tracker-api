@@ -4,7 +4,7 @@ import com.uade.grandprixtracker.booking.dto.CheckoutRequestDto;
 import com.uade.grandprixtracker.booking.dto.CheckoutRequestDto.EntradaItem;
 import com.uade.grandprixtracker.booking.dto.CheckoutRequestDto.HabitacionItem;
 import com.uade.grandprixtracker.booking.dto.CheckoutRequestDto.VueloItem;
-import com.uade.grandprixtracker.booking.dto.CheckoutResponseDto;
+import com.uade.grandprixtracker.booking.dto.ReservaResponseDto;
 import com.uade.grandprixtracker.booking.model.Reserva;
 import com.uade.grandprixtracker.booking.model.ReservaDetalleEntrada;
 import com.uade.grandprixtracker.booking.model.ReservaDetalleHotel;
@@ -73,7 +73,7 @@ public class CheckoutFacade {
     }
 
     @Transactional
-    public CheckoutResponseDto checkout(UUID idCliente, CheckoutRequestDto request) {
+    public ReservaResponseDto checkout(UUID idCliente, CheckoutRequestDto request) {
         if (request.entradas().isEmpty() && request.habitaciones().isEmpty() && request.vuelos().isEmpty()) {
             throw new IllegalArgumentException("El paquete debe incluir al menos una entrada, habitación o vuelo");
         }
@@ -102,7 +102,7 @@ public class CheckoutFacade {
         }
 
         MetodoPago metodoPago = paymentService.cobrar(cliente, request.pago());
-        Reserva reserva = new Reserva(cliente, metodoPago, generarCodigoConfirmacion(), Reserva.ESTADO_PAGADA, OffsetDateTime.now(clock));
+        Reserva reserva = new Reserva(cliente, evento, metodoPago, generarCodigoConfirmacion(), Reserva.ESTADO_PAGADA, OffsetDateTime.now(clock));
 
         // Se descuenta stock en orden de id para que dos checkouts concurrentes no se bloqueen mutuamente.
         request.entradas().stream()
@@ -130,7 +130,7 @@ public class CheckoutFacade {
                     reserva.agregarVuelo(new ReservaDetalleVuelo(vuelo, item.cantidadPasajeros(), subtotal));
                 });
 
-        return toDto(reservaRepository.save(reserva));
+        return ReservaMapper.toDto(reservaRepository.save(reserva));
     }
 
     private String generarCodigoConfirmacion() {
@@ -139,51 +139,5 @@ public class CheckoutFacade {
             codigo.append(ALFABETO_CODIGO.charAt(random.nextInt(ALFABETO_CODIGO.length())));
         }
         return codigo.toString();
-    }
-
-    private CheckoutResponseDto toDto(Reserva reserva) {
-        return new CheckoutResponseDto(
-                reserva.getIdReserva(),
-                reserva.getCodigoConfirmacion(),
-                reserva.getEstado(),
-                reserva.getFechaCompra(),
-                reserva.getTotalUsd(),
-                reserva.isIncluyeEntrada(),
-                reserva.isIncluyeHotel(),
-                reserva.isIncluyeVuelo(),
-                reserva.getMetodoPago().getIdMetodo(),
-                reserva.getEntradas().stream()
-                        .map(d -> new CheckoutResponseDto.EntradaLinea(
-                                d.getEntrada().getIdEntrada(),
-                                d.getEntrada().getNombreTribuna(),
-                                d.getEntrada().getTipo(),
-                                d.getCantidad(),
-                                d.getEntrada().getPrecioUsd(),
-                                d.getSubtotalUsd()))
-                        .toList(),
-                reserva.getHabitaciones().stream()
-                        .map(d -> new CheckoutResponseDto.HabitacionLinea(
-                                d.getHabitacion().getIdHabitacion(),
-                                d.getHabitacion().getHotel().getNombre(),
-                                d.getHabitacion().getTipo(),
-                                d.getFechaCheckIn(),
-                                d.getFechaCheckOut(),
-                                d.getCantidadNoches(),
-                                d.getHabitacion().getPrecioPorNocheUsd(),
-                                d.getSubtotalUsd()))
-                        .toList(),
-                reserva.getVuelos().stream()
-                        .map(d -> new CheckoutResponseDto.VueloLinea(
-                                d.getVuelo().getIdVuelo(),
-                                d.getVuelo().getAerolinea(),
-                                d.getVuelo().getOrigen().getNombre(),
-                                d.getVuelo().getDestino().getNombre(),
-                                d.getVuelo().getFechaSalida(),
-                                d.getVuelo().getFechaLlegada(),
-                                d.getCantidadPasajeros(),
-                                d.getVuelo().getPrecioUsd(),
-                                d.getSubtotalUsd()))
-                        .toList()
-        );
     }
 }
