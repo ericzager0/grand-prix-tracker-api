@@ -40,14 +40,15 @@ src/
     │       ├── payment/                           ← Métodos de pago y cobro (simulado)
     │       ├── booking/                           ← Checkout: CheckoutFacade + reservas
     │       ├── user/                              ← Clientes
-    │       ├── auth/                              ← Autenticación (vacío, pendiente de Supabase Auth)
+    │       ├── auth/                              ← Seguridad: valida el JWT de Supabase Auth (SecurityConfig + respuestas 401/403)
     │       │
-    │       ├── config/                            ← Configuración global (CORS, Clock)
+    │       ├── config/                            ← Configuración global (CORS, Clock, SOAP)
     │       └── shared/                            ← Excepciones y respuesta estándar de la API
     │
     └── resources/
         ├── application.properties                 ← Configuración de la app
         └── db/
+            ├── auth_clientes_trigger.sql          ← Trigger que crea el cliente al registrarse (ya aplicado en Supabase)
             ├── indexes.sql                        ← Índices (ya aplicados en Supabase)
             ├── reservas_id_evento.sql             ← Columna reservas.id_evento + backfill
             └── seed.sql                           ← Datos de prueba (ya aplicados en Supabase)
@@ -118,10 +119,34 @@ Configuración transversal a toda la aplicación. No pertenece a ninguna feature
 
 ```
 config/
-├── SecurityConfig.java           → configuración de Spring Security
 ├── CorsConfig.java               → configuración de CORS
-└── ...
+├── ClockConfig.java              → reloj inyectable (UTC)
+└── SoapWebServiceConfig.java     → servicio SOAP en /ws
 ```
+
+### `auth/`
+
+Autenticación con **Supabase Auth**. El login y el registro los hace el front contra Supabase; el backend solo valida el token que llega en `Authorization: Bearer <token>` (Spring Security como OAuth2 Resource Server) y toma el cliente del claim `sub`.
+
+```
+auth/
+├── config/
+│   └── SecurityConfig.java              → qué rutas son públicas y cuáles exigen token; API stateless, sin CSRF
+└── handler/
+    ├── ApiAuthenticationEntryPoint.java → 401 con el envoltorio ApiResponse
+    └── ApiAccessDeniedHandler.java      → 403 con el envoltorio ApiResponse
+```
+
+La verificación del token se configura en `application.properties` (`spring.security.oauth2.resourceserver.jwt.*`). Los valores por defecto apuntan al proyecto de Supabase y se pueden pisar con variables de entorno:
+
+| Variable | Default |
+|---|---|
+| `SUPABASE_JWT_ISSUER_URI` | `https://zprznayvpeijjoiknird.supabase.co/auth/v1` |
+| `SUPABASE_JWK_SET_URI` | `https://zprznayvpeijjoiknird.supabase.co/auth/v1/.well-known/jwks.json` |
+| `SUPABASE_JWT_AUDIENCE` | `authenticated` |
+| `SUPABASE_JWT_ALGORITHMS` | `ES256` (sin esto Spring asume RS256 y rechaza todos los tokens) |
+
+No hace falta ningún secreto: los tokens se firman con una clave asimétrica y las claves públicas se leen del JWKS.
 
 ### `shared/`
 

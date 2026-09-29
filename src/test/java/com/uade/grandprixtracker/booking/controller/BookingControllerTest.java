@@ -3,15 +3,16 @@ package com.uade.grandprixtracker.booking.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.uade.grandprixtracker.auth.config.SecurityConfig;
 import com.uade.grandprixtracker.booking.dto.CheckoutRequestDto;
 import com.uade.grandprixtracker.booking.dto.ReservaResponseDto;
 import com.uade.grandprixtracker.booking.service.CheckoutFacade;
 import com.uade.grandprixtracker.booking.service.ReservaService;
-import com.uade.grandprixtracker.shared.exception.GlobalExceptionHandler;
 import com.uade.grandprixtracker.shared.exception.ResourceNotFoundException;
 import com.uade.grandprixtracker.shared.exception.StockInsuficienteException;
 import java.math.BigDecimal;
@@ -21,28 +22,31 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
-@ExtendWith(MockitoExtension.class)
+// Pasa por la cadena de filtros de SecurityConfig; el JwtDecoder es un mock y el usuario se simula con jwt().
+@WebMvcTest(BookingController.class)
+@Import(SecurityConfig.class)
 class BookingControllerTest {
 
+    @Autowired
     private MockMvc mockMvc;
 
-    @Mock
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
+
+    @MockitoBean
     private CheckoutFacade checkoutFacade;
 
-    @Mock
+    @MockitoBean
     private ReservaService reservaService;
-
-    @InjectMocks
-    private BookingController bookingController;
 
     private UUID idCliente;
     private UUID idEvento;
@@ -50,16 +54,14 @@ class BookingControllerTest {
 
     @BeforeEach
     void setUp() {
-        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
-        validator.afterPropertiesSet();
-        mockMvc = MockMvcBuilders.standaloneSetup(bookingController)
-                .setControllerAdvice(new GlobalExceptionHandler())
-                .setValidator(validator)
-                .build();
-
         idCliente = UUID.randomUUID();
         idEvento = UUID.randomUUID();
         idEntrada = UUID.randomUUID();
+    }
+
+    // Usuario autenticado con Supabase: el claim "sub" es el id del cliente.
+    private JwtRequestPostProcessor usuario() {
+        return jwt().jwt(j -> j.subject(idCliente.toString()));
     }
 
     private String body(int cantidad) {
@@ -96,7 +98,7 @@ class BookingControllerTest {
         when(checkoutFacade.checkout(eq(idCliente), any(CheckoutRequestDto.class))).thenReturn(respuesta);
 
         mockMvc.perform(post("/bookings")
-                        .header("X-Cliente-Id", idCliente.toString())
+                        .with(usuario())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(2)))
                 .andExpect(status().isCreated())
@@ -130,20 +132,9 @@ class BookingControllerTest {
     }
 
     @Test
-    void checkout_SinHeaderCliente_Devuelve400() throws Exception {
-        mockMvc.perform(post("/bookings")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(2)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false));
-
-        verifyNoInteractions(checkoutFacade);
-    }
-
-    @Test
     void checkout_CantidadInvalida_Devuelve400() throws Exception {
         mockMvc.perform(post("/bookings")
-                        .header("X-Cliente-Id", idCliente.toString())
+                        .with(usuario())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(0)))
                 .andExpect(status().isBadRequest())
@@ -158,7 +149,7 @@ class BookingControllerTest {
                 .thenThrow(new StockInsuficienteException("No hay stock suficiente para la tribuna Tribuna A"));
 
         mockMvc.perform(post("/bookings")
-                        .header("X-Cliente-Id", idCliente.toString())
+                        .with(usuario())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(2)))
                 .andExpect(status().isConflict())
@@ -170,7 +161,7 @@ class BookingControllerTest {
     void getBookings_SinReservas_Devuelve200ConListaVacia() throws Exception {
         when(reservaService.listarPorCliente(idCliente)).thenReturn(List.of());
 
-        mockMvc.perform(get("/bookings").header("X-Cliente-Id", idCliente.toString()))
+        mockMvc.perform(get("/bookings").with(usuario()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").isArray())
@@ -183,7 +174,7 @@ class BookingControllerTest {
                 reserva(UUID.randomUUID(), "GP-NUEVA234", "2026-10-02T12:00:00Z"),
                 reserva(UUID.randomUUID(), "GP-VIEJA234", "2026-09-01T12:00:00Z")));
 
-        mockMvc.perform(get("/bookings").header("X-Cliente-Id", idCliente.toString()))
+        mockMvc.perform(get("/bookings").with(usuario()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.data[0].codigoConfirmacion").value("GP-NUEVA234"))
@@ -191,18 +182,8 @@ class BookingControllerTest {
     }
 
     @Test
-    void getBookings_SinHeaderCliente_Devuelve400() throws Exception {
-        mockMvc.perform(get("/bookings"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("Falta el header requerido: X-Cliente-Id"));
-
-        verifyNoInteractions(reservaService);
-    }
-
-    @Test
-    void getBookings_HeaderClienteNoUuid_Devuelve400() throws Exception {
-        mockMvc.perform(get("/bookings").header("X-Cliente-Id", "no-es-un-uuid"))
+    void getBookings_SubNoUuid_Devuelve400() throws Exception {
+        mockMvc.perform(get("/bookings").with(jwt().jwt(j -> j.subject("no-es-un-uuid"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false));
 
@@ -213,7 +194,7 @@ class BookingControllerTest {
     void getBookings_ClienteInexistente_Devuelve404() throws Exception {
         when(reservaService.listarPorCliente(idCliente)).thenThrow(new ResourceNotFoundException("Cliente no encontrado"));
 
-        mockMvc.perform(get("/bookings").header("X-Cliente-Id", idCliente.toString()))
+        mockMvc.perform(get("/bookings").with(usuario()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Cliente no encontrado"));
     }
@@ -223,7 +204,7 @@ class BookingControllerTest {
         UUID idReserva = UUID.randomUUID();
         when(reservaService.obtener(idCliente, idReserva)).thenReturn(reserva(idReserva, "GP-ABCD2345", "2026-10-01T12:00:00Z"));
 
-        mockMvc.perform(get("/bookings/{idReserva}", idReserva).header("X-Cliente-Id", idCliente.toString()))
+        mockMvc.perform(get("/bookings/{idReserva}", idReserva).with(usuario()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.idReserva").value(idReserva.toString()))
                 .andExpect(jsonPath("$.data.habitaciones[0].fechaCheckIn").value("2026-11-05"))
@@ -235,7 +216,7 @@ class BookingControllerTest {
         UUID idReserva = UUID.randomUUID();
         when(reservaService.obtener(idCliente, idReserva)).thenThrow(new ResourceNotFoundException("Reserva no encontrada"));
 
-        mockMvc.perform(get("/bookings/{idReserva}", idReserva).header("X-Cliente-Id", idCliente.toString()))
+        mockMvc.perform(get("/bookings/{idReserva}", idReserva).with(usuario()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("Reserva no encontrada"));
@@ -243,17 +224,9 @@ class BookingControllerTest {
 
     @Test
     void getBooking_IdReservaNoUuid_Devuelve400() throws Exception {
-        mockMvc.perform(get("/bookings/{idReserva}", "123").header("X-Cliente-Id", idCliente.toString()))
+        mockMvc.perform(get("/bookings/{idReserva}", "123").with(usuario()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Valor inválido para idReserva"));
-
-        verifyNoInteractions(reservaService);
-    }
-
-    @Test
-    void getBooking_SinHeaderCliente_Devuelve400() throws Exception {
-        mockMvc.perform(get("/bookings/{idReserva}", UUID.randomUUID()))
-                .andExpect(status().isBadRequest());
 
         verifyNoInteractions(reservaService);
     }

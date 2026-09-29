@@ -7,17 +7,17 @@ Contrato HTTP del backend para quien consuma la API, principalmente el frontend 
 
 ## Índice
 
-| Método | Ruta | Para qué |
-|---|---|---|
-| `GET` | [`/events`](#get-events) | Calendario de Grandes Premios |
-| `GET` | [`/events/{id}`](#get-eventsid) | Detalle de un Gran Premio |
-| `GET` | [`/events/{id}/tickets`](#get-eventsidtickets) | Entradas disponibles del evento |
-| `GET` | [`/events/{id}/hotels`](#get-eventsidhotels) | Hoteles y habitaciones en la ciudad del evento |
-| `GET` | [`/events/{id}/flights`](#get-eventsidflights) | Vuelos de ida y vuelta a la ciudad del evento |
-| `GET` | [`/payment-methods`](#get-payment-methods) | Tarjetas guardadas del cliente |
-| `POST` | [`/bookings`](#post-bookings) | Comprar el paquete |
-| `GET` | [`/bookings`](#get-bookings) | Reservas del cliente (perfil) |
-| `GET` | [`/bookings/{idReserva}`](#get-bookingsidreserva) | Detalle de una reserva ("Ver itinerario completo") |
+| Método | Ruta | Para qué | Token |
+|---|---|---|---|
+| `GET` | [`/events`](#get-events) | Calendario de Grandes Premios | no |
+| `GET` | [`/events/{id}`](#get-eventsid) | Detalle de un Gran Premio | no |
+| `GET` | [`/events/{id}/tickets`](#get-eventsidtickets) | Entradas disponibles del evento | no |
+| `GET` | [`/events/{id}/hotels`](#get-eventsidhotels) | Hoteles y habitaciones en la ciudad del evento | no |
+| `GET` | [`/events/{id}/flights`](#get-eventsidflights) | Vuelos de ida y vuelta a la ciudad del evento | no |
+| `GET` | [`/payment-methods`](#get-payment-methods) | Tarjetas guardadas del cliente | sí |
+| `POST` | [`/bookings`](#post-bookings) | Comprar el paquete | sí |
+| `GET` | [`/bookings`](#get-bookings) | Reservas del cliente (perfil) | sí |
+| `GET` | [`/bookings/{idReserva}`](#get-bookingsidreserva) | Detalle de una reserva ("Ver itinerario completo") | sí |
 
 ---
 
@@ -30,11 +30,32 @@ Contrato HTTP del backend para quien consuma la API, principalmente el frontend 
 - **IDs**: UUID en string.
 - **CORS**: habilitado para cualquier origen.
 
-### Identificación del cliente (temporal)
+### Identificación del cliente
 
-Todavía no hay autenticación. Los endpoints que dependen del cliente (`GET /payment-methods`, `POST /bookings`, `GET /bookings` y `GET /bookings/{idReserva}`) reciben su id en el header **`X-Cliente-Id`**. Para desarrollo, usar el cliente de prueba `99999999-0000-4000-8000-000000000001`.
+El usuario inicia sesión en el front con Supabase Auth. Los endpoints que dependen del cliente (`GET /payment-methods`, `POST /bookings`, `GET /bookings` y `GET /bookings/{idReserva}`) exigen el `access_token` de esa sesión:
 
-Cuando se integre Supabase Auth, ese header se reemplaza por `Authorization: Bearer <jwt>` y el backend toma el cliente del claim `sub`. El resto del contrato no cambia.
+```
+Authorization: Bearer <access_token de Supabase>
+```
+
+El backend verifica el token (firma ES256 contra el JWKS del proyecto, emisor `https://zprznayvpeijjoiknird.supabase.co/auth/v1`, audiencia `authenticated` y vencimiento) y toma el cliente del claim `sub`, que es igual a `clientes.id_cliente`: al registrarse, un trigger sobre `auth.users` crea la fila en `clientes` ([`auth_clientes_trigger.sql`](../src/main/resources/db/auth_clientes_trigger.sql)). El header `X-Cliente-Id` ya no se usa y se ignora.
+
+Sin token, o con uno vencido o inválido, esos endpoints responden `401` con el envoltorio de siempre:
+
+```json
+{ "success": false, "message": "Se requiere iniciar sesión para acceder a este recurso", "data": null }
+```
+
+| Caso | `message` |
+|---|---|
+| Falta el header `Authorization` | `"Se requiere iniciar sesión para acceder a este recurso"` |
+| Token vencido, con firma inválida, de otro proyecto o mal formado | `"La sesión es inválida o expiró"` |
+
+Ante un `401` el front debería refrescar la sesión (o mandar al login) y reintentar.
+
+Los endpoints públicos (`GET /events/**`, incluidos `/tickets`, `/hotels` y `/flights`, y el servicio SOAP `/ws`) no necesitan token. Si llega uno se ignora, así que un token vencido no los rompe.
+
+**Pendiente:** `/notifications/**` todavía identifica al usuario con `?userId=` y no verifica token.
 
 ### Envoltorio de respuesta
 
@@ -52,7 +73,9 @@ interface ApiResponse<T> {
 
 | Código | Significado |
 |---|---|
-| `400` | Request inválida: body mal formado, validación de campos, header faltante, UUID inválido o una regla de negocio incumplida. |
+| `400` | Request inválida: body mal formado, validación de campos, UUID inválido o una regla de negocio incumplida. |
+| `401` | Falta el token, o está vencido o es inválido (ver [Identificación del cliente](#identificación-del-cliente)). |
+| `403` | Autenticado pero sin permiso. Hoy ningún endpoint lo devuelve; si aparece, usa el mismo envoltorio. |
 | `404` | El recurso pedido, o alguno referenciado en el body, no existe. |
 | `409` | Conflicto de stock: alguien compró antes y ya no alcanza. |
 | `500` | Error inesperado del servidor. |
@@ -212,7 +235,7 @@ interface Vuelo {
 
 Tarjetas guardadas del cliente, de la más nueva a la más vieja. Nunca expone el token de la pasarela.
 
-**Headers**: `X-Cliente-Id` (ver [Identificación del cliente](#identificación-del-cliente-temporal)).
+**Headers**: `Authorization: Bearer <token>` (ver [Identificación del cliente](#identificación-del-cliente)).
 
 **Respuesta `200`**: `ApiResponse<MetodoPago[]>`
 
@@ -228,7 +251,7 @@ interface MetodoPago {
 
 El tipo `Credito`/`Debito` no indica la marca (Visa, Mastercard); hoy la base no guarda la marca.
 
-**Errores**: `400` si falta `X-Cliente-Id` o no es un UUID · `404` si el cliente no existe.
+**Errores**: `401` sin token o con token vencido o inválido · `404` si el cliente no existe.
 
 ---
 
@@ -250,7 +273,7 @@ Si cualquier paso falla no se aplica nada: ni stock, ni tarjeta, ni reserva.
 
 | Header | Requerido | Descripción |
 |---|---|---|
-| `X-Cliente-Id` | sí | UUID del cliente que compra (ver [Identificación del cliente](#identificación-del-cliente-temporal)). |
+| `Authorization` | sí | `Bearer <token>` del cliente que compra (ver [Identificación del cliente](#identificación-del-cliente)). |
 | `Content-Type` | sí | `application/json` |
 
 **Body**
@@ -371,7 +394,8 @@ Para el ejemplo de arriba: 2 × 520 (entradas) + 4 noches × 222.75 (Doble del G
 
 | Código | Casos |
 |---|---|
-| `400` | Falta `X-Cliente-Id` o no es UUID · body mal formado · campo inválido (el `message` lista los campos, ej. `"Datos inválidos: entradas[0].cantidad: must be greater than 0"`) · paquete vacío · evento finalizado o con `fechaFin` pasada · entrada de otro evento · hotel o vuelo fuera de la ciudad del evento · vuelo ya partido · fechas de hotel inválidas · tarjeta vencida o datos de tarjeta incompletos. |
+| `400` | Body mal formado · campo inválido (el `message` lista los campos, ej. `"Datos inválidos: entradas[0].cantidad: must be greater than 0"`) · paquete vacío · evento finalizado o con `fechaFin` pasada · entrada de otro evento · hotel o vuelo fuera de la ciudad del evento · vuelo ya partido · fechas de hotel inválidas · tarjeta vencida o datos de tarjeta incompletos. |
+| `401` | Sin token o con token vencido o inválido. |
 | `404` | No existe el cliente, el evento, alguna entrada, habitación o vuelo, o el `idMetodoPago` no es del cliente. |
 | `409` | Sin stock suficiente. El `message` indica cuál, ej. `"No hay stock suficiente para la tribuna Paddock Club"`. |
 
@@ -379,7 +403,7 @@ Para el ejemplo de arriba: 2 × 520 (entradas) + 4 noches × 222.75 (Doble del G
 
 Reservas del cliente, de la más nueva a la más vieja (`fechaCompra` descendente). Incluye todas, cualquiera sea su `estado`; el front decide cuáles mostrar.
 
-**Headers**: `X-Cliente-Id` (ver [Identificación del cliente](#identificación-del-cliente-temporal)).
+**Headers**: `Authorization: Bearer <token>` (ver [Identificación del cliente](#identificación-del-cliente)).
 
 **Respuesta `200`**: `ApiResponse<Reserva[]>`, con la misma forma de `Reserva` que el [`POST /bookings`](#post-bookings). Si el cliente no tiene reservas, `data` es `[]`.
 
@@ -436,14 +460,14 @@ Ejemplo (una reserva con el paquete del ejemplo del `POST`):
 
 | Código | Casos |
 |---|---|
-| `400` | Falta `X-Cliente-Id` (`"Falta el header requerido: X-Cliente-Id"`) o no es UUID (`"Valor inválido para X-Cliente-Id"`). |
+| `401` | Sin token (`"Se requiere iniciar sesión para acceder a este recurso"`) o con token vencido o inválido (`"La sesión es inválida o expiró"`). |
 | `404` | El cliente no existe (`"Cliente no encontrado"`). |
 
 ### `GET /bookings/{idReserva}`
 
 Una reserva del cliente, con la misma forma que cada ítem de `GET /bookings`: entradas, habitaciones con fechas y noches, vuelos con horarios y el medio de pago usado.
 
-**Headers**: `X-Cliente-Id`.
+**Headers**: `Authorization: Bearer <token>`.
 
 **Respuesta `200`**: `ApiResponse<Reserva>`, con `message: "Reserva obtenida correctamente"`.
 
@@ -451,7 +475,8 @@ Una reserva del cliente, con la misma forma que cada ítem de `GET /bookings`: e
 
 | Código | Casos |
 |---|---|
-| `400` | Falta `X-Cliente-Id` o no es UUID · `idReserva` no es UUID (`"Valor inválido para idReserva"`). |
+| `400` | `idReserva` no es UUID (`"Valor inválido para idReserva"`). |
+| `401` | Sin token o con token vencido o inválido. |
 | `404` | El cliente no existe (`"Cliente no encontrado"`) · la reserva no existe **o es de otro cliente** (`"Reserva no encontrada"`, sin distinguir entre los dos casos para no revelar que la reserva existe). |
 
 Los `message` de estos errores están en español y se pueden mostrar tal cual.
@@ -461,7 +486,7 @@ Los `message` de estos errores están en español y se pueden mostrar tal cual.
 ## Endpoints que todavía no existen
 
 - **Alta y baja de tarjetas** (`AddPaymentModal` del perfil). Hoy una tarjeta nueva solo se guarda al usarla en una compra.
-- **Datos del cliente** (`DatosView` del perfil) y registro. Llegan con Supabase Auth.
+- **Datos del cliente** (`DatosView` del perfil). El registro y el login los hace el front directo contra Supabase Auth; el backend no tiene endpoints de auth.
 - **Traslados**: no existen en la base (ver [`checkout.md`](./checkout.md#limitaciones-conocidas)).
 
 ---
@@ -473,7 +498,9 @@ Hay dos orígenes de datos:
 - **Hoteles y habitaciones** los carga el **microservicio de hoteles** del equipo. Sus UUIDs los genera ese servicio y pueden cambiar si se recargan, así que **no hardcodearlos**: obtenerlos siempre con [`GET /events/{id}/hotels`](#get-eventsidhotels). Hoy hay 3 hoteles por ciudad de evento, cada uno con habitaciones `Single`, `Doble` y `Suite`.
 - **Todo lo demás** (entradas, vuelos, clientes, tarjetas y Buenos Aires como origen de los vuelos) lo carga [`src/main/resources/db/seed.sql`](../src/main/resources/db/seed.sql) con ids fijos. Países, ciudades, circuitos y eventos ya estaban cargados en Supabase.
 
-**Clientes** (para `X-Cliente-Id`)
+**Clientes**
+
+Para probar los endpoints con token hace falta un usuario real: registrarse desde el front (el trigger le crea la fila en `clientes`, sin tarjetas guardadas) y usar el `access_token` de la sesión. Los clientes del seed no tienen usuario en `auth.users`, así que no se puede iniciar sesión con ellos; sirven como "otro cliente" en los casos de error.
 
 | id | Cliente | Tarjetas guardadas (`idMetodoPago`) |
 |---|---|---|
@@ -508,7 +535,8 @@ En cada evento las entradas van en orden General, Asiento Numerado y VIP. Todos 
 | Vuelo ya partido | vuelo `016` (a Sao Paulo, 1 sep) con el evento Sao Paulo. No aparece en `GET /flights` | `400` |
 | Entrada de otro evento | entrada `001` (Madrid) con el evento Sao Paulo | `400` |
 | Hotel de otra ciudad | una habitación de `GET /events/{idMadrid}/hotels` con el evento Sao Paulo | `400` |
-| Tarjeta de otro cliente | cliente `99999999-0000-4000-8000-000000000001` pagando con `idMetodoPago` `aaaaaaaa-0000-4000-8000-000000000003` | `404` |
+| Tarjeta de otro cliente | cualquier usuario logueado pagando con `idMetodoPago` `aaaaaaaa-0000-4000-8000-000000000003` (de Ana Pilotti) | `404` |
+| Sin sesión | `GET /bookings` sin header `Authorization` | `401` |
 
 Hoy no hay ninguna habitación agotada cargada. Para probar el `409` de hotel hay que elegir una habitación con poco stock (varias Suites tienen `stockDisponible: 1`) y comprarla dos veces.
 

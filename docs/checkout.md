@@ -25,7 +25,7 @@ El contrato del endpoint (`POST /bookings`: headers, body, respuesta y errores) 
 
 ## Arquitectura
 
-`BookingController` → `CheckoutFacade` → `TicketService`, `HotelService`, `FlightService`, `PaymentService`.
+`SecurityConfig` (valida el JWT) → `BookingController` → `CheckoutFacade` → `TicketService`, `HotelService`, `FlightService`, `PaymentService`.
 
 Las consultas de reservas (`GET /bookings` y `GET /bookings/{idReserva}`) van por `ReservaService`, fuera del facade porque no compran nada. El checkout y las consultas arman la respuesta con el mismo `ReservaMapper`, así que las tres devuelven la misma forma.
 
@@ -55,7 +55,8 @@ Las fechas y horas se toman de un `Clock` inyectado (`ClockConfig`, en UTC), par
 - **Cancelaciones.** No hay endpoint para cancelar una reserva ni para devolver stock.
 - **Estado de los eventos.** `eventos_f1.estado` no se actualiza solo. El checkout se protege usando `fecha_fin`, pero el calendario sigue mostrando el estado que figura en la base.
 - **Stock de hotel compartido con el microservicio.** Hoteles y habitaciones los carga un microservicio del equipo, y el checkout descuenta `habitaciones_hotel.stock_disponible` en cada compra. Si el microservicio vuelve a escribir el stock al sincronizar, pisa esos descuentos y se pueden vender habitaciones que ya no hay. Además, una habitación con reservas no se puede borrar (FK `ON DELETE RESTRICT`), así que el microservicio tiene que actualizar por id en vez de borrar y recargar.
-- **Identificación del cliente.** Hasta integrar Supabase Auth, el cliente llega en el header `X-Cliente-Id` y no se verifica: cualquiera que conozca un id puede comprar a su nombre o ver sus tarjetas. Es aceptable para desarrollo, no para producción.
+- **Identificación del cliente.** El cliente sale del claim `sub` del JWT de Supabase Auth, que el backend verifica (firma, emisor, audiencia y vencimiento) antes de llegar al controller; ya no se acepta `X-Cliente-Id`. Ver [`api.md`](./api.md#identificación-del-cliente). Queda pendiente `/notifications/**`, que sigue recibiendo `?userId=` sin verificar.
+- **Clientes registrados antes del trigger.** La fila de `clientes` la crea un trigger al registrarse en Supabase Auth ([`auth_clientes_trigger.sql`](../src/main/resources/db/auth_clientes_trigger.sql)). Si hay usuarios en `auth.users` creados antes del trigger y sin fila en `clientes`, reciben `404 Cliente no encontrado`; hay que insertarla a mano.
 
 ## Limpiar compras de prueba
 
