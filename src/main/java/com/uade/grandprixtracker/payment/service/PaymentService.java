@@ -34,9 +34,8 @@ public class PaymentService {
 
     @Transactional(readOnly = true)
     public List<MetodoPagoResponseDto> listarPorCliente(UUID idCliente) {
-        if (!clienteRepository.existsById(idCliente)) {
-            throw new ResourceNotFoundException("Cliente", "id", idCliente);
-        }
+        Cliente cliente = clienteRepository.findById(idCliente)
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente", "id", idCliente));
 
         return metodoPagoRepository.findByClienteIdClienteOrderByCreatedAtDesc(idCliente)
                 .stream()
@@ -45,7 +44,9 @@ public class PaymentService {
                         m.getTipo(),
                         m.getUltimos4Digitos(),
                         m.getFechaExpiracion(),
-                        estaVencida(m.getFechaExpiracion())))
+                        estaVencida(m.getFechaExpiracion()),
+                        m.getNombreTitular(),
+                        cliente.getTelefono()))
                 .toList();
     }
 
@@ -79,7 +80,8 @@ public class PaymentService {
                 pago.ultimos4Digitos(),
                 pago.proveedorToken(),
                 pago.fechaExpiracion(),
-                OffsetDateTime.now(clock)
+                OffsetDateTime.now(clock),
+                pago.nombreTitular()
         ));
     }
 

@@ -178,6 +178,7 @@ Referenciada por: `metodos_pago.id_cliente`, `reservas.id_cliente`
 | `ultimos_4_digitos` | varchar | |
 | `proveedor_token` | text | token de la pasarela de pago — no se almacena el número completo de la tarjeta |
 | `fecha_expiracion` | varchar | |
+| `nombre_titular` | varchar | nullable |
 | `created_at` | timestamptz | |
 
 Referenciada por: `reservas.id_metodo_pago`

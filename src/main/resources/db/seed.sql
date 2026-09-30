@@ -86,10 +86,10 @@ INSERT INTO clientes (id_cliente, nombre, apellido, email, telefono) VALUES
     ('99999999-0000-4000-8000-000000000002', 'Ana',     'Pilotti', 'ana.pilotti@grandprixtracker.test',    '+54 11 5555-0002')
 ON CONFLICT DO NOTHING;
 
-INSERT INTO metodos_pago (id_metodo, id_cliente, tipo, ultimos_4_digitos, proveedor_token, fecha_expiracion) VALUES
-    ('aaaaaaaa-0000-4000-8000-000000000001', '99999999-0000-4000-8000-000000000001', 'Credito', '4242', 'tok_test_credito_4242', '12/28'),
-    ('aaaaaaaa-0000-4000-8000-000000000002', '99999999-0000-4000-8000-000000000001', 'Debito',  '8812', 'tok_test_debito_8812',  '08/27'),
-    ('aaaaaaaa-0000-4000-8000-000000000003', '99999999-0000-4000-8000-000000000002', 'Credito', '1111', 'tok_test_credito_1111', '05/29')
+INSERT INTO metodos_pago (id_metodo, id_cliente, tipo, ultimos_4_digitos, proveedor_token, fecha_expiracion, nombre_titular) VALUES
+    ('aaaaaaaa-0000-4000-8000-000000000001', '99999999-0000-4000-8000-000000000001', 'Credito', '4242', 'tok_test_credito_4242', '12/28', 'Cliente Prueba'),
+    ('aaaaaaaa-0000-4000-8000-000000000002', '99999999-0000-4000-8000-000000000001', 'Debito',  '8812', 'tok_test_debito_8812',  '08/27', 'Cliente Prueba'),
+    ('aaaaaaaa-0000-4000-8000-000000000003', '99999999-0000-4000-8000-000000000002', 'Credito', '1111', 'tok_test_credito_1111', '05/29', 'Ana Pilotti')
 ON CONFLICT DO NOTHING;
 
 COMMIT;

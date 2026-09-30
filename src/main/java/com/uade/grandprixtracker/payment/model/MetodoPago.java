@@ -38,6 +38,9 @@ public class MetodoPago {
     @Column(name = "fecha_expiracion", nullable = false)
     private String fechaExpiracion;
 
+    @Column(name = "nombre_titular")
+    private String nombreTitular;
+
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
 
@@ -45,6 +48,10 @@ public class MetodoPago {
     }
 
     public MetodoPago(UUID idMetodo, Cliente cliente, String tipo, String ultimos4Digitos, String proveedorToken, String fechaExpiracion, OffsetDateTime createdAt) {
+        this(idMetodo, cliente, tipo, ultimos4Digitos, proveedorToken, fechaExpiracion, createdAt, null);
+    }
+
+    public MetodoPago(UUID idMetodo, Cliente cliente, String tipo, String ultimos4Digitos, String proveedorToken, String fechaExpiracion, OffsetDateTime createdAt, String nombreTitular) {
         this.idMetodo = idMetodo;
         this.cliente = cliente;
         this.tipo = tipo;
@@ -52,6 +59,7 @@ public class MetodoPago {
         this.proveedorToken = proveedorToken;
         this.fechaExpiracion = fechaExpiracion;
         this.createdAt = createdAt;
+        this.nombreTitular = nombreTitular;
     }
 
     public UUID getIdMetodo() {
@@ -76,6 +84,10 @@ public class MetodoPago {
 
     public String getFechaExpiracion() {
         return fechaExpiracion;
+    }
+
+    public String getNombreTitular() {
+        return nombreTitular;
     }
 
     public OffsetDateTime getCreatedAt() {

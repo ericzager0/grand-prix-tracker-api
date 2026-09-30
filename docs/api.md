@@ -246,6 +246,8 @@ interface MetodoPago {
   ultimos4Digitos: string;
   fechaExpiracion: string;   // "MM/AA"
   vencida: boolean;          // true si ya venció; el checkout la rechaza
+  nombre_titular?: string;   // nombre del titular de la tarjeta
+  telefono?: string;         // teléfono del cliente asociado
 }
 ```
 

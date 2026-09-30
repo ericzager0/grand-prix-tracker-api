@@ -40,14 +40,14 @@ class PaymentServiceTest {
     @BeforeEach
     void setUp() {
         paymentService = new PaymentService(metodoPagoRepository, clienteRepository, CLOCK);
-        cliente = new Cliente(UUID.randomUUID(), "Ayrton", "Senna", "ayrton@example.com", null);
+        cliente = new Cliente(UUID.randomUUID(), "Ayrton", "Senna", "ayrton@example.com", "+54 11 1111-2222");
     }
 
     @Test
     void listarPorCliente_MarcaLasVencidas() {
-        MetodoPago vigente = new MetodoPago(UUID.randomUUID(), cliente, "Credito", "4242", "tok", "12/28", null);
-        MetodoPago vencida = new MetodoPago(UUID.randomUUID(), cliente, "Debito", "8812", "tok", "08/26", null);
-        when(clienteRepository.existsById(cliente.getIdCliente())).thenReturn(true);
+        MetodoPago vigente = new MetodoPago(UUID.randomUUID(), cliente, "Credito", "4242", "tok", "12/28", null, "Ayrton Senna");
+        MetodoPago vencida = new MetodoPago(UUID.randomUUID(), cliente, "Debito", "8812", "tok", "08/26", null, "Ayrton Senna");
+        when(clienteRepository.findById(cliente.getIdCliente())).thenReturn(Optional.of(cliente));
         when(metodoPagoRepository.findByClienteIdClienteOrderByCreatedAtDesc(cliente.getIdCliente()))
                 .thenReturn(List.of(vigente, vencida));
 
@@ -56,11 +56,13 @@ class PaymentServiceTest {
         assertFalse(metodos.get(0).vencida());
         assertTrue(metodos.get(1).vencida());
         assertEquals("4242", metodos.get(0).ultimos4Digitos());
+        assertEquals("Ayrton Senna", metodos.get(0).nombre_titular());
+        assertEquals("+54 11 1111-2222", metodos.get(0).telefono());
     }
 
     @Test
     void listarPorCliente_ClienteInexistente_LanzaNotFound() {
-        when(clienteRepository.existsById(cliente.getIdCliente())).thenReturn(false);
+        when(clienteRepository.findById(cliente.getIdCliente())).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> paymentService.listarPorCliente(cliente.getIdCliente()));
     }
@@ -101,11 +103,12 @@ class PaymentServiceTest {
     void cobrar_TarjetaNueva_LaGuardaAsociadaAlCliente() {
         when(metodoPagoRepository.save(any(MetodoPago.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        MetodoPago resultado = paymentService.cobrar(cliente, new PagoRequestDto(null, "Debito", "8812", "10/26", "tok_nuevo"));
+        MetodoPago resultado = paymentService.cobrar(cliente, new PagoRequestDto(null, "Debito", "8812", "10/26", "tok_nuevo", "Ayrton Senna"));
 
         assertSame(cliente, resultado.getCliente());
         assertEquals("8812", resultado.getUltimos4Digitos());
         assertEquals("Debito", resultado.getTipo());
+        assertEquals("Ayrton Senna", resultado.getNombreTitular());
     }
 
     @Test

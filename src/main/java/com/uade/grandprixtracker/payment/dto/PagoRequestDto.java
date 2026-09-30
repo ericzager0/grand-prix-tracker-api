@@ -1,5 +1,6 @@
 package com.uade.grandprixtracker.payment.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Pattern;
 import java.util.UUID;
 
@@ -14,5 +15,11 @@ public record PagoRequestDto(
         String ultimos4Digitos,
         @Pattern(regexp = "(0[1-9]|1[0-2])/\\d{2}", message = "debe tener formato MM/AA")
         String fechaExpiracion,
-        String proveedorToken
-) {}
+        String proveedorToken,
+        @JsonProperty("nombre_titular")
+        String nombreTitular
+) {
+    public PagoRequestDto(UUID idMetodoPago, String tipo, String ultimos4Digitos, String fechaExpiracion, String proveedorToken) {
+        this(idMetodoPago, tipo, ultimos4Digitos, fechaExpiracion, proveedorToken, null);
+    }
+}
