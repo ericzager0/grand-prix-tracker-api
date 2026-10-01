@@ -136,6 +136,11 @@ interface Evento {
     curvas: number | null;
     vueltas: number | null;
     mapaSvgUrl: string | null;
+    record: string | null;
+    velocidad_maxima: string | null;
+    maximo_ganador: string | null;
+    circuit_svg_url: string | null;
+    capacidad: string | null;
     ciudad: {
       idCiudad: string;
       nombre: string;

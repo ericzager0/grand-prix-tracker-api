@@ -82,6 +82,11 @@
             <xs:element name="vueltas" type="xs:int" minOccurs="0"/>
             <xs:element name="mapaSvgUrl" type="xs:string" minOccurs="0"/>
             <xs:element name="ciudad" type="tns:CiudadSoapDto" minOccurs="0"/>
+            <xs:element name="record" type="xs:string" minOccurs="0"/>
+            <xs:element name="velocidadMaxima" type="xs:string" minOccurs="0"/>
+            <xs:element name="maximoGanador" type="xs:string" minOccurs="0"/>
+            <xs:element name="circuitSvgUrl" type="xs:string" minOccurs="0"/>
+            <xs:element name="capacidad" type="xs:string" minOccurs="0"/>
         </xs:sequence>
     </xs:complexType>
 

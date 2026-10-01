@@ -59,7 +59,12 @@ class EventControllerTest {
                 11,
                 53,
                 "https://example.com/monza.svg",
-                ciudad
+                ciudad,
+                "1:21.046",
+                "360 km/h",
+                "Lewis Hamilton",
+                "https://example.com/monza_circuit.svg",
+                "118865"
         );
 
         sampleDto = new EventoF1ResponseDto(
@@ -86,7 +91,12 @@ class EventControllerTest {
                 .andExpect(jsonPath("$.data[0].circuito.nombre").value("Autodromo Nazionale Monza"))
                 .andExpect(jsonPath("$.data[0].circuito.ciudad.nombre").value("Monza"))
                 .andExpect(jsonPath("$.data[0].circuito.ciudad.pais.nombre").value("Italia"))
-                .andExpect(jsonPath("$.data[0].circuito.ciudad.pais.continente").value("europe"));
+                .andExpect(jsonPath("$.data[0].circuito.ciudad.pais.continente").value("europe"))
+                .andExpect(jsonPath("$.data[0].circuito.record").value("1:21.046"))
+                .andExpect(jsonPath("$.data[0].circuito.velocidad_maxima").value("360 km/h"))
+                .andExpect(jsonPath("$.data[0].circuito.maximo_ganador").value("Lewis Hamilton"))
+                .andExpect(jsonPath("$.data[0].circuito.circuit_svg_url").value("https://example.com/monza_circuit.svg"))
+                .andExpect(jsonPath("$.data[0].circuito.capacidad").value("118865"));
 
         verify(eventService, times(1)).getAllEvents();
     }
@@ -132,6 +142,20 @@ class EventControllerTest {
 
         verify(eventService, times(1)).getEventsByTemporada(2026);
         verify(eventService, never()).getAllEvents();
+    }
+
+    @Test
+    void testGetAllCircuitos_Alias() throws Exception {
+        when(eventService.getAllEvents()).thenReturn(List.of(sampleDto));
+
+        mockMvc.perform(get("/circuitos")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[0].circuito.record").value("1:21.046"));
+
+        verify(eventService, times(1)).getAllEvents();
     }
 }
 

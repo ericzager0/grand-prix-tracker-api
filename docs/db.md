@@ -57,6 +57,11 @@ Referenciada por: `circuitos.id_ciudad`, `hoteles.id_ciudad`, `vuelos.origen_id_
 | `curvas` | integer | nullable |
 | `vueltas` | integer | nullable |
 | `mapa_svg_url` | text | nullable |
+| `record` | text | nullable, récord de pista |
+| `velocidad_maxima` | text | nullable, velocidad máxima en km/h |
+| `maximo_ganador` | text | nullable, piloto con más victorias |
+| `circuit_svg_url` | text | nullable, URL al SVG del trazado |
+| `capacidad` | text | nullable, capacidad del circuito |
 | `created_at` | timestamptz | |
 
 Referenciada por: `eventos_f1.id_circuito`

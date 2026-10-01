@@ -52,7 +52,12 @@ class EventServiceTest {
                 72,
                 "https://example.com/galvez.svg",
                 ciudad,
-                OffsetDateTime.now()
+                OffsetDateTime.now(),
+                "1:13.052",
+                "315 km/h",
+                "Juan Manuel Fangio",
+                "https://example.com/galvez_circuit.svg",
+                "45000"
         );
 
         testEvento = new EventoF1(
@@ -87,6 +92,11 @@ class EventServiceTest {
         assertEquals(new BigDecimal("4.259"), dto.circuito().longitudKm());
         assertEquals(15, dto.circuito().curvas());
         assertEquals(72, dto.circuito().vueltas());
+        assertEquals("1:13.052", dto.circuito().record());
+        assertEquals("315 km/h", dto.circuito().velocidad_maxima());
+        assertEquals("Juan Manuel Fangio", dto.circuito().maximo_ganador());
+        assertEquals("https://example.com/galvez_circuit.svg", dto.circuito().circuit_svg_url());
+        assertEquals("45000", dto.circuito().capacidad());
 
         // Validar ciudad
         assertNotNull(dto.circuito().ciudad());

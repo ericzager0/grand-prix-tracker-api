@@ -51,7 +51,12 @@ public class EventSoapMapper {
                     circuito.curvas(),
                     circuito.vueltas(),
                     circuito.mapaSvgUrl(),
-                    ciudadSoap
+                    ciudadSoap,
+                    circuito.record(),
+                    circuito.velocidad_maxima(),
+                    circuito.maximo_ganador(),
+                    circuito.circuit_svg_url(),
+                    circuito.capacidad()
             );
         }
 

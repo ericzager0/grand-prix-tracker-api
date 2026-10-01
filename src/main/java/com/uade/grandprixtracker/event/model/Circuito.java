@@ -44,6 +44,21 @@ public class Circuito {
     @Column(name = "mapa_svg_url", columnDefinition = "text")
     private String mapaSvgUrl;
 
+    @Column(name = "record", columnDefinition = "text")
+    private String record;
+
+    @Column(name = "velocidad_maxima", columnDefinition = "text")
+    private String velocidadMaxima;
+
+    @Column(name = "maximo_ganador", columnDefinition = "text")
+    private String maximoGanador;
+
+    @Column(name = "circuit_svg_url", columnDefinition = "text")
+    private String circuitSvgUrl;
+
+    @Column(name = "capacidad", columnDefinition = "text")
+    private String capacidad;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_ciudad", nullable = false)
     private Ciudad ciudad;
@@ -63,6 +78,15 @@ public class Circuito {
         this.mapaSvgUrl = mapaSvgUrl;
         this.ciudad = ciudad;
         this.createdAt = createdAt;
+    }
+
+    public Circuito(UUID idCircuito, String nombre, BigDecimal longitudKm, Integer curvas, Integer vueltas, String mapaSvgUrl, Ciudad ciudad, OffsetDateTime createdAt, String record, String velocidadMaxima, String maximoGanador, String circuitSvgUrl, String capacidad) {
+        this(idCircuito, nombre, longitudKm, curvas, vueltas, mapaSvgUrl, ciudad, createdAt);
+        this.record = record;
+        this.velocidadMaxima = velocidadMaxima;
+        this.maximoGanador = maximoGanador;
+        this.circuitSvgUrl = circuitSvgUrl;
+        this.capacidad = capacidad;
     }
 
     public UUID getIdCircuito() {
@@ -125,8 +149,44 @@ public class Circuito {
         return createdAt;
     }
 
-    public void setCreatedAt(OffsetDateTime createdAt) {
-        this.createdAt = createdAt;
+    public String getRecord() {
+        return record;
+    }
+
+    public void setRecord(String record) {
+        this.record = record;
+    }
+
+    public String getVelocidadMaxima() {
+        return velocidadMaxima;
+    }
+
+    public void setVelocidadMaxima(String velocidadMaxima) {
+        this.velocidadMaxima = velocidadMaxima;
+    }
+
+    public String getMaximoGanador() {
+        return maximoGanador;
+    }
+
+    public void setMaximoGanador(String maximoGanador) {
+        this.maximoGanador = maximoGanador;
+    }
+
+    public String getCircuitSvgUrl() {
+        return circuitSvgUrl;
+    }
+
+    public void setCircuitSvgUrl(String circuitSvgUrl) {
+        this.circuitSvgUrl = circuitSvgUrl;
+    }
+
+    public String getCapacidad() {
+        return capacidad;
+    }
+
+    public void setCapacidad(String capacidad) {
+        this.capacidad = capacidad;
     }
 }
 

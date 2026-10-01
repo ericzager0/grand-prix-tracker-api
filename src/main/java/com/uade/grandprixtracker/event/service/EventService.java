@@ -68,6 +68,10 @@ public class EventService {
                         paisDto
                 );
             }
+            String svgUrl = (circuito.getCircuitSvgUrl() != null && !circuito.getCircuitSvgUrl().isBlank())
+                    ? circuito.getCircuitSvgUrl()
+                    : circuito.getMapaSvgUrl();
+
             circuitoDto = new CircuitoResponseDto(
                     circuito.getIdCircuito(),
                     circuito.getNombre(),
@@ -75,7 +79,12 @@ public class EventService {
                     circuito.getCurvas(),
                     circuito.getVueltas(),
                     circuito.getMapaSvgUrl(),
-                    ciudadDto
+                    ciudadDto,
+                    circuito.getRecord(),
+                    circuito.getVelocidadMaxima(),
+                    circuito.getMaximoGanador(),
+                    svgUrl,
+                    circuito.getCapacidad()
             );
         }
 

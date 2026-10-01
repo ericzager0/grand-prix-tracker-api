@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/events")
+@RequestMapping({"/events", "/circuitos", "/circuits", "/races"})
 public class EventController {
 
     private final EventService eventService;
