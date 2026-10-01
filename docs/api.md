@@ -15,6 +15,8 @@ Contrato HTTP del backend para quien consuma la API, principalmente el frontend 
 | `GET` | [`/events/{id}/hotels`](#get-eventsidhotels) | Hoteles y habitaciones en la ciudad del evento | no |
 | `GET` | [`/events/{id}/flights`](#get-eventsidflights) | Vuelos de ida y vuelta a la ciudad del evento | no |
 | `GET` | [`/payment-methods`](#get-payment-methods) | Tarjetas guardadas del cliente | sí |
+| `GET` | [`/users/profile`](#get-usersprofile) | Datos del perfil del cliente | sí |
+| `PUT` | [`/users/profile`](#put-usersprofile) | Actualizar perfil del cliente (nombre, apellido, teléfono, DNI) | sí |
 | `POST` | [`/bookings`](#post-bookings) | Comprar el paquete | sí |
 | `GET` | [`/bookings`](#get-bookings) | Reservas del cliente (perfil) | sí |
 | `GET` | [`/bookings/{idReserva}`](#get-bookingsidreserva) | Detalle de una reserva ("Ver itinerario completo") | sí |
@@ -260,6 +262,69 @@ interface MetodoPago {
 El tipo `Credito`/`Debito` no indica la marca (Visa, Mastercard); hoy la base no guarda la marca.
 
 **Errores**: `401` sin token o con token vencido o inválido · `404` si el cliente no existe.
+
+---
+
+## Usuarios y Perfil
+
+### `GET /users/profile`
+
+Devuelve los datos del perfil del cliente autenticado.
+
+**Headers**: `Authorization: Bearer <token>`
+
+**Respuesta `200`**: `ApiResponse<UserProfile>`
+
+```ts
+interface UserProfile {
+  idCliente: string;
+  nombre: string;
+  apellido: string;
+  email: string;
+  telefono: string | null;
+  dni: number | null;
+}
+```
+
+**Errores**: `401` sin token o con token vencido · `404` si el cliente no existe.
+
+### `PUT /users/profile`
+
+Actualiza (o crea si no existiera) los datos del perfil del usuario autenticado (nombre, apellido, teléfono, DNI). Soporta también la ruta `/profile`.
+
+**Headers**: `Authorization: Bearer <token>`
+
+**Body**
+
+```json
+{
+  "nombre": "string",
+  "apellido": "string",
+  "telefono": "string | null",
+  "dni": "number | null"
+}
+```
+
+**Respuesta `200`**: `ApiResponse<UserProfile>`
+
+```json
+{
+  "success": true,
+  "message": "Perfil actualizado correctamente",
+  "data": {
+    "idCliente": "99999999-0000-4000-8000-000000000001",
+    "nombre": "Juan",
+    "apellido": "Perez",
+    "email": "juan.perez@example.com",
+    "telefono": "+54 11 5555-1234",
+    "dni": 35123456
+  }
+}
+```
+
+**Errores**:
+- `400` si `nombre` o `apellido` están vacíos.
+- `401` sin token o con sesión inválida.
 
 ---
 
