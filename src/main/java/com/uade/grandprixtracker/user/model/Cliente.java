@@ -26,15 +26,23 @@ public class Cliente {
     @Column(name = "telefono")
     private String telefono;
 
+    @Column(name = "dni")
+    private java.math.BigDecimal dni;
+
     public Cliente() {
     }
 
     public Cliente(UUID idCliente, String nombre, String apellido, String email, String telefono) {
+        this(idCliente, nombre, apellido, email, telefono, null);
+    }
+
+    public Cliente(UUID idCliente, String nombre, String apellido, String email, String telefono, java.math.BigDecimal dni) {
         this.idCliente = idCliente;
         this.nombre = nombre;
         this.apellido = apellido;
         this.email = email;
         this.telefono = telefono;
+        this.dni = dni;
     }
 
     public UUID getIdCliente() {
@@ -55,5 +63,13 @@ public class Cliente {
 
     public String getTelefono() {
         return telefono;
+    }
+
+    public java.math.BigDecimal getDni() {
+        return dni;
+    }
+
+    public void setDni(java.math.BigDecimal dni) {
+        this.dni = dni;
     }
 }

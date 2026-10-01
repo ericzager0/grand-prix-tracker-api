@@ -81,9 +81,9 @@ INSERT INTO vuelos (id_vuelo, aerolinea, origen_id_ciudad, destino_id_ciudad, fe
     ('88888888-0000-4000-8000-000000000016', 'Aerolíneas Argentinas', '22222222-0000-4000-8000-000000000001', '4501eeb9-010b-468a-9024-4343f698cf58', '2026-09-01 12:00:00+00', '2026-09-01 15:00:00+00',  300.00, 20)
 ON CONFLICT DO NOTHING;
 
-INSERT INTO clientes (id_cliente, nombre, apellido, email, telefono) VALUES
-    ('99999999-0000-4000-8000-000000000001', 'Cliente', 'Prueba',  'cliente.prueba@grandprixtracker.test', '+54 11 5555-0001'),
-    ('99999999-0000-4000-8000-000000000002', 'Ana',     'Pilotti', 'ana.pilotti@grandprixtracker.test',    '+54 11 5555-0002')
+INSERT INTO clientes (id_cliente, nombre, apellido, email, telefono, dni) VALUES
+    ('99999999-0000-4000-8000-000000000001', 'Cliente', 'Prueba',  'cliente.prueba@grandprixtracker.test', '+54 11 5555-0001', 35123456),
+    ('99999999-0000-4000-8000-000000000002', 'Ana',     'Pilotti', 'ana.pilotti@grandprixtracker.test',    '+54 11 5555-0002', 40987654)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO metodos_pago (id_metodo, id_cliente, tipo, ultimos_4_digitos, proveedor_token, fecha_expiracion, nombre_titular) VALUES

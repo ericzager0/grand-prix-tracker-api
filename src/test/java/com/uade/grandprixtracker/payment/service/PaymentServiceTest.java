@@ -40,7 +40,7 @@ class PaymentServiceTest {
     @BeforeEach
     void setUp() {
         paymentService = new PaymentService(metodoPagoRepository, clienteRepository, CLOCK);
-        cliente = new Cliente(UUID.randomUUID(), "Ayrton", "Senna", "ayrton@example.com", "+54 11 1111-2222");
+        cliente = new Cliente(UUID.randomUUID(), "Ayrton", "Senna", "ayrton@example.com", "+54 11 1111-2222", new java.math.BigDecimal("35123456"));
     }
 
     @Test
@@ -58,6 +58,7 @@ class PaymentServiceTest {
         assertEquals("4242", metodos.get(0).ultimos4Digitos());
         assertEquals("Ayrton Senna", metodos.get(0).nombre_titular());
         assertEquals("+54 11 1111-2222", metodos.get(0).telefono());
+        assertEquals(new java.math.BigDecimal("35123456"), metodos.get(0).dni());
     }
 
     @Test

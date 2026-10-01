@@ -167,6 +167,7 @@ Referenciada por: `reserva_detalle_vuelos.id_vuelo`
 | `apellido` | varchar | |
 | `email` | varchar | UNIQUE |
 | `telefono` | varchar | nullable |
+| `dni` | numeric | nullable, Documento Nacional de Identidad |
 | `created_at` | timestamptz | |
 
 Referenciada por: `metodos_pago.id_cliente`, `reservas.id_cliente`

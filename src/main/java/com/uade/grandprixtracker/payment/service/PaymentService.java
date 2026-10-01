@@ -46,7 +46,8 @@ public class PaymentService {
                         m.getFechaExpiracion(),
                         estaVencida(m.getFechaExpiracion()),
                         m.getNombreTitular(),
-                        cliente.getTelefono()))
+                        cliente.getTelefono(),
+                        cliente.getDni()))
                 .toList();
     }
 

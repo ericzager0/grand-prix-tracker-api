@@ -5,24 +5,26 @@
 
 -- 1. TRIGGER: auth.users -> public.clientes
 -- Cuando un usuario se registra o actualiza en Supabase Auth, se sincroniza en `clientes`
--- incluyendo nombre, apellido, email y teléfono.
+-- incluyendo nombre, apellido, email, teléfono y DNI.
 create or replace function public.handle_new_auth_user()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin
-  insert into public.clientes (id_cliente, nombre, apellido, email, telefono)
+  insert into public.clientes (id_cliente, nombre, apellido, email, telefono, dni)
   values (
     new.id,
     coalesce(nullif(new.raw_user_meta_data->>'nombre', ''), split_part(new.email, '@', 1)),
     coalesce(new.raw_user_meta_data->>'apellido', ''),
     new.email,
-    coalesce(nullif(new.raw_user_meta_data->>'telefono', ''), new.phone)
+    coalesce(nullif(new.raw_user_meta_data->>'telefono', ''), new.phone),
+    nullif(new.raw_user_meta_data->>'dni', '')::numeric
   )
   on conflict (id_cliente) do update
   set
     nombre = coalesce(nullif(excluded.nombre, ''), clientes.nombre),
     apellido = coalesce(nullif(excluded.apellido, ''), clientes.apellido),
     email = coalesce(excluded.email, clientes.email),
-    telefono = coalesce(excluded.telefono, clientes.telefono);
+    telefono = coalesce(excluded.telefono, clientes.telefono),
+    dni = coalesce(excluded.dni, clientes.dni);
   return new;
 end; $$;
 
@@ -32,15 +34,20 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_auth_user();
 
 -- 2. TRIGGER: public.clientes -> auth.users (Opción A: sincroniza user_metadata)
--- Cuando se inserte o actualice `telefono` en `clientes`, se actualiza automáticamente
--- el campo `user_metadata.telefono` en `auth.users` para que el frontend lo lea de inmediato
+-- Cuando se inserte o actualice `telefono` o `dni` en `clientes`, se actualiza automáticamente
+-- en `auth.users.raw_user_meta_data` para que el frontend lo lea de inmediato
 -- sin necesidad de queries directas a la base de datos.
 create or replace function public.sync_cliente_to_auth_user()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin
-  if new.telefono is not null and (old is null or new.telefono is distinct from old.telefono) then
+  if (new.telefono is not null and (old is null or new.telefono is distinct from old.telefono)) or
+     (new.dni is not null and (old is null or new.dni is distinct from old.dni)) then
     update auth.users
-    set raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('telefono', new.telefono)
+    set raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) ||
+      jsonb_strip_nulls(jsonb_build_object(
+        'telefono', new.telefono,
+        'dni', new.dni
+      ))
     where id = new.id_cliente;
   end if;
   return new;
@@ -48,17 +55,20 @@ end; $$;
 
 drop trigger if exists on_cliente_updated on public.clientes;
 create trigger on_cliente_updated
-  after insert or update of telefono on public.clientes
+  after insert or update of telefono, dni on public.clientes
   for each row execute function public.sync_cliente_to_auth_user();
 
--- 3. BACKFILL: Sincronizar teléfonos existentes hacia auth.users
--- Copia los teléfonos que ya existan en la tabla `clientes` hacia `auth.users.raw_user_meta_data`.
+-- 3. BACKFILL: Sincronizar teléfonos y DNI existentes hacia auth.users
+-- Copia los teléfonos y DNIs que ya existan en la tabla `clientes` hacia `auth.users.raw_user_meta_data`.
 update auth.users u
-set raw_user_meta_data = coalesce(u.raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('telefono', c.telefono)
+set raw_user_meta_data = coalesce(u.raw_user_meta_data, '{}'::jsonb) ||
+  jsonb_strip_nulls(jsonb_build_object(
+    'telefono', c.telefono,
+    'dni', c.dni
+  ))
 from public.clientes c
 where u.id = c.id_cliente
-  and c.telefono is not null
-  and (u.raw_user_meta_data->>'telefono' is null or u.raw_user_meta_data->>'telefono' != c.telefono);
+  and (c.telefono is not null or c.dni is not null);
 
 -- 4. POLÍTICAS RLS: Habilitar lectura y edición directa en clientes (Opción B)
 -- Permite que el front haga: supabase.from('clientes').select('telefono').eq('id_cliente', user.id).single()

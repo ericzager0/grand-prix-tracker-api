@@ -37,7 +37,7 @@ class PaymentControllerTest {
     void getPaymentMethods_Devuelve200SinExponerElToken() throws Exception {
         UUID idCliente = UUID.randomUUID();
         when(paymentService.listarPorCliente(idCliente)).thenReturn(List.of(
-                new MetodoPagoResponseDto(UUID.randomUUID(), "Credito", "4242", "12/28", false, "Juan Perez", "+54 11 1234-5678")));
+                new MetodoPagoResponseDto(UUID.randomUUID(), "Credito", "4242", "12/28", false, "Juan Perez", "+54 11 1234-5678", new java.math.BigDecimal("35123456"))));
 
         mockMvc.perform(get("/payment-methods").with(jwt().jwt(j -> j.subject(idCliente.toString()))))
                 .andExpect(status().isOk())
@@ -45,6 +45,7 @@ class PaymentControllerTest {
                 .andExpect(jsonPath("$.data[0].vencida").value(false))
                 .andExpect(jsonPath("$.data[0].nombre_titular").value("Juan Perez"))
                 .andExpect(jsonPath("$.data[0].telefono").value("+54 11 1234-5678"))
+                .andExpect(jsonPath("$.data[0].dni").value(35123456))
                 .andExpect(jsonPath("$.data[0].proveedorToken").doesNotExist());
     }
 
