@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping({"/users", "/users/profile", "/profile"})
 public class UserController {
 
     private final UserHandler userHandler;
@@ -24,7 +23,7 @@ public class UserController {
         this.userHandler = userHandler;
     }
 
-    @PutMapping({"/profile", ""})
+    @PutMapping({"/users/profile", "/profile"})
     public ResponseEntity<ApiResponse<UserProfileResponseDto>> updateProfile(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody UpdateUserProfileRequestDto request) {
@@ -32,7 +31,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("Perfil actualizado correctamente", response));
     }
 
-    @GetMapping({"/profile", ""})
+    @GetMapping({"/users/profile", "/profile"})
     public ResponseEntity<ApiResponse<UserProfileResponseDto>> getProfile(
             @AuthenticationPrincipal Jwt jwt) {
         UserProfileResponseDto response = userHandler.handleGetProfile(jwt);
