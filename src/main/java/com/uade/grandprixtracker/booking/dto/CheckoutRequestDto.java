@@ -13,13 +13,19 @@ public record CheckoutRequestDto(
         List<@Valid @NotNull EntradaItem> entradas,
         List<@Valid @NotNull HabitacionItem> habitaciones,
         List<@Valid @NotNull VueloItem> vuelos,
-        @Valid @NotNull PagoRequestDto pago
+        @Valid @NotNull PagoRequestDto pago,
+        Boolean incluyeTransporte
 ) {
 
     public CheckoutRequestDto {
         entradas = entradas == null ? List.of() : entradas;
         habitaciones = habitaciones == null ? List.of() : habitaciones;
         vuelos = vuelos == null ? List.of() : vuelos;
+        incluyeTransporte = Boolean.TRUE.equals(incluyeTransporte);
+    }
+
+    public CheckoutRequestDto(UUID idEvento, List<EntradaItem> entradas, List<HabitacionItem> habitaciones, List<VueloItem> vuelos, PagoRequestDto pago) {
+        this(idEvento, entradas, habitaciones, vuelos, pago, false);
     }
 
     public record EntradaItem(

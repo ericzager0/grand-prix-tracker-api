@@ -152,6 +152,8 @@ class CheckoutFacadeTest {
         ArgumentCaptor<Reserva> guardada = ArgumentCaptor.forClass(Reserva.class);
         verify(reservaRepository).save(guardada.capture());
         assertSame(evento, guardada.getValue().getEvento());
+        assertFalse(response.incluyeTransporte());
+        assertFalse(guardada.getValue().isIncluyeTransporte());
     }
 
     @Test
@@ -250,5 +252,34 @@ class CheckoutFacadeTest {
 
         assertThrows(StockInsuficienteException.class, () -> checkoutFacade.checkout(idCliente, request));
         verify(reservaRepository, never()).save(any());
+    }
+
+    @Test
+    void checkout_ConTransporte_Suma30UsdAlTotalYMarcaIncluyeTransporte() {
+        stubClienteYEvento();
+        when(paymentService.cobrar(cliente, pago)).thenReturn(metodoPago);
+        when(reservaRepository.save(any(Reserva.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        EntradaGrada entrada = new EntradaGrada(UUID.randomUUID(), idEvento, "Tribuna A", new BigDecimal("350.00"), 10, "General");
+        when(ticketService.reservar(idEvento, entrada.getIdEntrada(), 1)).thenReturn(entrada);
+
+        CheckoutRequestDto request = new CheckoutRequestDto(
+                idEvento,
+                List.of(new EntradaItem(entrada.getIdEntrada(), 1)),
+                List.of(),
+                List.of(),
+                pago,
+                true);
+
+        ReservaResponseDto response = checkoutFacade.checkout(idCliente, request);
+
+        // 350 + 30 USD transporte = 380.00
+        assertEquals(new BigDecimal("380.00"), response.totalUsd());
+        assertTrue(response.incluyeTransporte());
+
+        ArgumentCaptor<Reserva> guardada = ArgumentCaptor.forClass(Reserva.class);
+        verify(reservaRepository).save(guardada.capture());
+        assertTrue(guardada.getValue().isIncluyeTransporte());
+        assertEquals(new BigDecimal("380.00"), guardada.getValue().getTotalUsd());
     }
 }

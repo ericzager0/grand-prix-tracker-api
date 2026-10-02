@@ -113,6 +113,7 @@ class BookingControllerTest {
                 .andExpect(jsonPath("$.data.incluyeEntrada").value(true))
                 .andExpect(jsonPath("$.data.incluyeHotel").value(true))
                 .andExpect(jsonPath("$.data.incluyeVuelo").value(false))
+                .andExpect(jsonPath("$.data.incluyeTransporte").value(false))
                 .andExpect(jsonPath("$.data.idMetodoPago").value(respuesta.idMetodoPago().toString()))
                 .andExpect(jsonPath("$.data.entradas[0].cantidad").value(2))
                 .andExpect(jsonPath("$.data.entradas[0].precioUnitarioUsd").value(350.00))

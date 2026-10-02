@@ -11,7 +11,8 @@ El contrato del endpoint (`POST /bookings`: headers, body, respuesta y errores) 
    - Entradas: `precio_usd × cantidad`
    - Hotel: `precio_por_noche_usd × noches` (noches = días entre check-in y check-out)
    - Vuelos: `precio_usd × cantidad_pasajeros`
-   - `total_usd` = suma de todos los subtotales.
+   - Transporte: `+30 USD` si `incluyeTransporte` viene en `true`
+   - `total_usd` = suma de todos los subtotales (más transporte si aplica).
 3. **Coherencia con el evento.**
    - Las entradas tienen que pertenecer al evento elegido.
    - Los hoteles tienen que estar en la ciudad del circuito del evento.
@@ -51,7 +52,7 @@ Las fechas y horas se toman de un `Clock` inyectado (`ClockConfig`, en UTC), par
 - **Regla de fechas de hotel no exigida por el backend.** Por negocio, el check-in es 1 día antes de `fecha_inicio` del evento y el check-out 1 día después de `fecha_fin` (carrera de jueves a domingo → miércoles a lunes). Hoy la aplica el front; el backend solo valida que check-out sea posterior a check-in y que check-in no sea en el pasado. Para exigirla, el checkout debería rechazar otras fechas o directamente calcularlas él y dejar de recibirlas en el body.
 - **Precio unitario no guardado.** Las tablas `reserva_detalle_*` guardan el subtotal pero no el precio unitario. La respuesta lo calcula como `subtotal / cantidad` (o `/ noches`, `/ pasajeros`), que da exactamente el precio pagado porque el subtotal se guardó como `precio × cantidad`.
 - **Reservas viejas sin evento.** Las reservas anteriores a `reservas.id_evento` se completaron con un backfill; las que no se pudieron resolver (por ejemplo, de solo vuelos) devuelven `evento: null`. Ver [`db.md`](./db.md#reservas).
-- **Traslados.** `reservas.incluye_transporte` existe en la base pero no hay tabla de traslados; hoy siempre queda en `false`.
+- **Traslados.** Se cobra un monto fijo de +30 USD cuando el usuario selecciona la opción (`incluyeTransporte: true`) y se persiste en `reservas.incluye_transporte` (no requiere tabla extra de traslados).
 - **Cancelaciones.** No hay endpoint para cancelar una reserva ni para devolver stock.
 - **Estado de los eventos.** `eventos_f1.estado` no se actualiza solo. El checkout se protege usando `fecha_fin`, pero el calendario sigue mostrando el estado que figura en la base.
 - **Stock de hotel compartido con el microservicio.** Hoteles y habitaciones los carga un microservicio del equipo, y el checkout descuenta `habitaciones_hotel.stock_disponible` en cada compra. Si el microservicio vuelve a escribir el stock al sincronizar, pisa esos descuentos y se pueden vender habitaciones que ya no hay. Además, una habitación con reservas no se puede borrar (FK `ON DELETE RESTRICT`), así que el microservicio tiene que actualizar por id en vez de borrar y recargar.

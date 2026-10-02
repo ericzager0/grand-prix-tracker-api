@@ -134,6 +134,10 @@ public class Reserva {
         return totalUsd;
     }
 
+    public void setTotalUsd(BigDecimal totalUsd) {
+        this.totalUsd = totalUsd;
+    }
+
     public String getEstado() {
         return estado;
     }
@@ -156,6 +160,15 @@ public class Reserva {
 
     public boolean isIncluyeTransporte() {
         return incluyeTransporte;
+    }
+
+    public void setIncluyeTransporte(boolean incluyeTransporte) {
+        this.incluyeTransporte = incluyeTransporte;
+    }
+
+    public void agregarTransporte(BigDecimal costoTransporte) {
+        this.incluyeTransporte = true;
+        this.totalUsd = this.totalUsd.add(costoTransporte);
     }
 
     public List<ReservaDetalleEntrada> getEntradas() {

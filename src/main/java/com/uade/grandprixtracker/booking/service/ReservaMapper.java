@@ -29,6 +29,7 @@ final class ReservaMapper {
                 reserva.isIncluyeEntrada(),
                 reserva.isIncluyeHotel(),
                 reserva.isIncluyeVuelo(),
+                reserva.isIncluyeTransporte(),
                 metodoPago == null ? null : metodoPago.getIdMetodo(),
                 metodoPago == null ? null : new ReservaResponseDto.MetodoPagoResumen(
                         metodoPago.getIdMetodo(),

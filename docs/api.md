@@ -357,6 +357,7 @@ interface CheckoutRequest {
   entradas?: { idEntrada: string; cantidad: number }[];                                    // cantidad >= 1
   habitaciones?: { idHabitacion: string; fechaCheckIn: string; fechaCheckOut: string }[]; // "YYYY-MM-DD"
   vuelos?: { idVuelo: string; cantidadPasajeros: number }[];                               // cantidadPasajeros >= 1
+  incluyeTransporte?: boolean;                                                             // opcional (default false); si es true suma +30 USD al totalUsd
   pago: PagoConTarjetaGuardada | PagoConTarjetaNueva;
 }
 
@@ -407,6 +408,7 @@ interface Reserva {
   incluyeEntrada: boolean;
   incluyeHotel: boolean;
   incluyeVuelo: boolean;
+  incluyeTransporte: boolean;
   idMetodoPago: string | null; // si se pagó con tarjeta nueva, es el id con el que quedó guardada
   metodoPago: {                // nuevo. Nunca incluye el token de la pasarela
     idMetodoPago: string;

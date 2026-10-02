@@ -43,6 +43,7 @@ public class CheckoutFacade {
     private static final String ESTADO_EVENTO_FINALIZADO = "Finalizado";
     private static final String ALFABETO_CODIGO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private static final int LARGO_CODIGO = 8;
+    private static final BigDecimal PRECIO_TRANSPORTE = BigDecimal.valueOf(30);
 
     private final ClienteRepository clienteRepository;
     private final EventoF1Repository eventoF1Repository;
@@ -129,6 +130,10 @@ public class CheckoutFacade {
                     BigDecimal subtotal = vuelo.getPrecioUsd().multiply(BigDecimal.valueOf(item.cantidadPasajeros()));
                     reserva.agregarVuelo(new ReservaDetalleVuelo(vuelo, item.cantidadPasajeros(), subtotal));
                 });
+
+        if (Boolean.TRUE.equals(request.incluyeTransporte())) {
+            reserva.agregarTransporte(PRECIO_TRANSPORTE);
+        }
 
         return ReservaMapper.toDto(reservaRepository.save(reserva));
     }

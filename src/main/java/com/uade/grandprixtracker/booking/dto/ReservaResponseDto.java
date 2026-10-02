@@ -19,6 +19,7 @@ public record ReservaResponseDto(
         boolean incluyeEntrada,
         boolean incluyeHotel,
         boolean incluyeVuelo,
+        boolean incluyeTransporte,
         UUID idMetodoPago,
         MetodoPagoResumen metodoPago,
         EventoResumen evento,
@@ -26,6 +27,27 @@ public record ReservaResponseDto(
         List<HabitacionLinea> habitaciones,
         List<VueloLinea> vuelos
 ) {
+
+    public ReservaResponseDto(
+            UUID idReserva,
+            String codigoConfirmacion,
+            String estado,
+            OffsetDateTime fechaCompra,
+            BigDecimal totalUsd,
+            boolean incluyeEntrada,
+            boolean incluyeHotel,
+            boolean incluyeVuelo,
+            UUID idMetodoPago,
+            MetodoPagoResumen metodoPago,
+            EventoResumen evento,
+            List<EntradaLinea> entradas,
+            List<HabitacionLinea> habitaciones,
+            List<VueloLinea> vuelos
+    ) {
+        this(idReserva, codigoConfirmacion, estado, fechaCompra, totalUsd,
+                incluyeEntrada, incluyeHotel, incluyeVuelo, false,
+                idMetodoPago, metodoPago, evento, entradas, habitaciones, vuelos);
+    }
 
     public record MetodoPagoResumen(
             UUID idMetodoPago,
