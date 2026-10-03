@@ -45,6 +45,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class CheckoutFacadeTest {
@@ -58,6 +59,7 @@ class CheckoutFacadeTest {
     @Mock private HotelService hotelService;
     @Mock private FlightService flightService;
     @Mock private PaymentService paymentService;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private CheckoutFacade checkoutFacade;
 
@@ -73,7 +75,7 @@ class CheckoutFacadeTest {
     @BeforeEach
     void setUp() {
         checkoutFacade = new CheckoutFacade(clienteRepository, eventoF1Repository, reservaRepository,
-                ticketService, hotelService, flightService, paymentService, CLOCK);
+                ticketService, hotelService, flightService, paymentService, CLOCK, eventPublisher);
 
         idCliente = UUID.randomUUID();
         idEvento = UUID.randomUUID();

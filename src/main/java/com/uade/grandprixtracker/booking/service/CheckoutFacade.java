@@ -5,6 +5,7 @@ import com.uade.grandprixtracker.booking.dto.CheckoutRequestDto.EntradaItem;
 import com.uade.grandprixtracker.booking.dto.CheckoutRequestDto.HabitacionItem;
 import com.uade.grandprixtracker.booking.dto.CheckoutRequestDto.VueloItem;
 import com.uade.grandprixtracker.booking.dto.ReservaResponseDto;
+import com.uade.grandprixtracker.booking.event.CompraConfirmadaEvent;
 import com.uade.grandprixtracker.booking.model.Reserva;
 import com.uade.grandprixtracker.booking.model.ReservaDetalleEntrada;
 import com.uade.grandprixtracker.booking.model.ReservaDetalleHotel;
@@ -31,6 +32,7 @@ import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +55,7 @@ public class CheckoutFacade {
     private final FlightService flightService;
     private final PaymentService paymentService;
     private final Clock clock;
+    private final ApplicationEventPublisher eventPublisher;
     private final SecureRandom random = new SecureRandom();
 
     public CheckoutFacade(ClienteRepository clienteRepository,
@@ -62,7 +65,8 @@ public class CheckoutFacade {
                           HotelService hotelService,
                           FlightService flightService,
                           PaymentService paymentService,
-                          Clock clock) {
+                          Clock clock,
+                          ApplicationEventPublisher eventPublisher) {
         this.clienteRepository = clienteRepository;
         this.eventoF1Repository = eventoF1Repository;
         this.reservaRepository = reservaRepository;
@@ -71,6 +75,7 @@ public class CheckoutFacade {
         this.flightService = flightService;
         this.paymentService = paymentService;
         this.clock = clock;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -135,7 +140,12 @@ public class CheckoutFacade {
             reserva.agregarTransporte(PRECIO_TRANSPORTE);
         }
 
-        return ReservaMapper.toDto(reservaRepository.save(reserva));
+        ReservaResponseDto reservaDto = ReservaMapper.toDto(reservaRepository.save(reserva));
+
+        // El email se envía recién después del commit y en otro hilo (ver CompraConfirmadaEmailListener).
+        eventPublisher.publishEvent(new CompraConfirmadaEvent(cliente.getEmail(), cliente.getNombre(), reservaDto));
+
+        return reservaDto;
     }
 
     private String generarCodigoConfirmacion() {
