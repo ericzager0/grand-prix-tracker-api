@@ -5,11 +5,16 @@ import com.uade.grandprixtracker.booking.dto.ReservaResponseDto.EntradaLinea;
 import com.uade.grandprixtracker.booking.dto.ReservaResponseDto.HabitacionLinea;
 import com.uade.grandprixtracker.booking.dto.ReservaResponseDto.VueloLinea;
 import com.uade.grandprixtracker.booking.event.CompraConfirmadaEvent;
+import java.io.InputStream;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -31,6 +36,7 @@ public class CompraConfirmadaEmailListener {
     private static final String TEMPLATE = "compra-confirmada.html";
     private static final DateTimeFormatter FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter FECHA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final String LOGO_HTML = cargarLogoHtml();
 
     private final BrevoEmailSender emailSender;
     private final EmailTemplateRenderer templateRenderer;
@@ -72,7 +78,8 @@ public class CompraConfirmadaEmailListener {
                 "fechasEvento", fechasEvento(r),
                 "detalle", filasDetalle(r),
                 "total", usd(r.totalUsd()),
-                "metodoPago", metodoPago(r)
+                "metodoPago", metodoPago(r),
+                "logo", LOGO_HTML
         );
     }
 
@@ -96,9 +103,33 @@ public class CompraConfirmadaEmailListener {
             }
         }
         if (r.incluyeTransporte()) {
-            filas.append(fila("Transporte al circuito", null));
+            filas.append(fila("TRANSLADO", BigDecimal.valueOf(30)));
         }
         return filas.toString();
+    }
+
+    private static String cargarLogoHtml() {
+        try {
+            byte[] bytes = null;
+            ClassPathResource res = new ClassPathResource("templates/email/logo-nobg.png");
+            if (res.exists()) {
+                try (InputStream in = res.getInputStream()) {
+                    bytes = in.readAllBytes();
+                }
+            } else {
+                Path path = Path.of("src/assets/logo-nobg.png");
+                if (Files.exists(path)) {
+                    bytes = Files.readAllBytes(path);
+                }
+            }
+            if (bytes != null && bytes.length > 0) {
+                String base64 = Base64.getEncoder().encodeToString(bytes);
+                return "<img src=\"data:image/png;base64," + base64 + "\" alt=\"Grand Prix Tracker\" width=\"75\" height=\"81\" style=\"display:block;margin:0 auto 12px auto;max-width:75px;height:auto;border:0;\" />";
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo cargar el logo para el email: {}", e.getMessage());
+        }
+        return "";
     }
 
     private String fila(String descripcion, BigDecimal subtotal) {
