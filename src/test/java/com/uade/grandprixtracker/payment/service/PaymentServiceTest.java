@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import com.uade.grandprixtracker.payment.dto.MetodoPagoRequestDto;
 import com.uade.grandprixtracker.payment.dto.MetodoPagoResponseDto;
 import com.uade.grandprixtracker.payment.dto.PagoRequestDto;
 import com.uade.grandprixtracker.payment.model.MetodoPago;
@@ -123,5 +124,115 @@ class PaymentServiceTest {
     void cobrar_TarjetaNuevaIncompleta_LanzaIllegalArgument() {
         assertThrows(IllegalArgumentException.class,
                 () -> paymentService.cobrar(cliente, new PagoRequestDto(null, "Credito", "4242", "12/28", null)));
+    }
+
+    @Test
+    void agregar_DatosValidos_GuardaYDevuelveDto() {
+        when(clienteRepository.findById(cliente.getIdCliente())).thenReturn(Optional.of(cliente));
+        when(metodoPagoRepository.save(any(MetodoPago.class))).thenAnswer(inv -> {
+            MetodoPago mp = inv.getArgument(0);
+            return new MetodoPago(UUID.randomUUID(), mp.getCliente(), mp.getTipo(), mp.getUltimos4Digitos(),
+                    mp.getProveedorToken(), mp.getFechaExpiracion(), mp.getCreatedAt(), mp.getNombreTitular());
+        });
+
+        MetodoPagoRequestDto request = new MetodoPagoRequestDto(
+                "Credito", "1234", "12/26", "tok_simulado_123", "AYRTON SENNA");
+
+        MetodoPagoResponseDto response = paymentService.agregar(cliente.getIdCliente(), request);
+
+        assertNotNull(response.idMetodoPago());
+        assertEquals("Credito", response.tipo());
+        assertEquals("1234", response.ultimos4Digitos());
+        assertEquals("12/26", response.fechaExpiracion());
+        assertFalse(response.vencida());
+        assertEquals("AYRTON SENNA", response.nombre_titular());
+        assertEquals(cliente.getTelefono(), response.telefono());
+        assertEquals(cliente.getDni(), response.dni());
+    }
+
+    @Test
+    void agregar_SinToken_LanzaIllegalArgument() {
+        when(clienteRepository.findById(cliente.getIdCliente())).thenReturn(Optional.of(cliente));
+
+        MetodoPagoRequestDto request = new MetodoPagoRequestDto(
+                "Credito", "1234", "12/26", null, "AYRTON SENNA");
+
+        assertThrows(IllegalArgumentException.class, () -> paymentService.agregar(cliente.getIdCliente(), request));
+        verify(metodoPagoRepository, never()).save(any());
+    }
+
+    @Test
+    void agregar_TarjetaVencida_LanzaIllegalArgument() {
+        when(clienteRepository.findById(cliente.getIdCliente())).thenReturn(Optional.of(cliente));
+
+        MetodoPagoRequestDto request = new MetodoPagoRequestDto(
+                "Credito", "1234", "08/26", "tok_simulado_123", "AYRTON SENNA");
+
+        assertThrows(IllegalArgumentException.class, () -> paymentService.agregar(cliente.getIdCliente(), request));
+        verify(metodoPagoRepository, never()).save(any());
+    }
+
+    @Test
+    void agregar_ClienteInexistente_LanzaNotFound() {
+        when(clienteRepository.findById(cliente.getIdCliente())).thenReturn(Optional.empty());
+
+        MetodoPagoRequestDto request = new MetodoPagoRequestDto(
+                "Credito", "1234", "12/26", "tok_simulado_123", "AYRTON SENNA");
+
+        assertThrows(ResourceNotFoundException.class, () -> paymentService.agregar(cliente.getIdCliente(), request));
+    }
+
+    @Test
+    void actualizar_DatosValidos_ActualizaYDevuelveDto() {
+        UUID idMetodo = UUID.randomUUID();
+        MetodoPago existente = new MetodoPago(idMetodo, cliente, "Debito", "9999", "tok_anterior", "11/26", null, "VIEJO TITULAR");
+        when(clienteRepository.findById(cliente.getIdCliente())).thenReturn(Optional.of(cliente));
+        when(metodoPagoRepository.findByIdMetodoAndClienteIdCliente(idMetodo, cliente.getIdCliente()))
+                .thenReturn(Optional.of(existente));
+        when(metodoPagoRepository.save(any(MetodoPago.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        MetodoPagoRequestDto request = new MetodoPagoRequestDto(
+                "Credito", "1234", "12/26", "tok_simulado_123", "AYRTON SENNA");
+
+        MetodoPagoResponseDto response = paymentService.actualizar(cliente.getIdCliente(), idMetodo, request);
+
+        assertEquals(idMetodo, response.idMetodoPago());
+        assertEquals("Credito", response.tipo());
+        assertEquals("1234", response.ultimos4Digitos());
+        assertEquals("12/26", response.fechaExpiracion());
+        assertFalse(response.vencida());
+        assertEquals("AYRTON SENNA", response.nombre_titular());
+        assertEquals(cliente.getTelefono(), response.telefono());
+        assertEquals(cliente.getDni(), response.dni());
+    }
+
+    @Test
+    void actualizar_TarjetaDeOtroClienteOInexistente_LanzaNotFound() {
+        UUID idMetodo = UUID.randomUUID();
+        when(clienteRepository.findById(cliente.getIdCliente())).thenReturn(Optional.of(cliente));
+        when(metodoPagoRepository.findByIdMetodoAndClienteIdCliente(idMetodo, cliente.getIdCliente()))
+                .thenReturn(Optional.empty());
+
+        MetodoPagoRequestDto request = new MetodoPagoRequestDto(
+                "Credito", "1234", "12/26", "tok_simulado_123", "AYRTON SENNA");
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> paymentService.actualizar(cliente.getIdCliente(), idMetodo, request));
+    }
+
+    @Test
+    void actualizar_TarjetaVencida_LanzaIllegalArgument() {
+        UUID idMetodo = UUID.randomUUID();
+        MetodoPago existente = new MetodoPago(idMetodo, cliente, "Debito", "9999", "tok_anterior", "11/26", null, "VIEJO TITULAR");
+        when(clienteRepository.findById(cliente.getIdCliente())).thenReturn(Optional.of(cliente));
+        when(metodoPagoRepository.findByIdMetodoAndClienteIdCliente(idMetodo, cliente.getIdCliente()))
+                .thenReturn(Optional.of(existente));
+
+        MetodoPagoRequestDto request = new MetodoPagoRequestDto(
+                "Credito", "1234", "08/26", "tok_simulado_123", "AYRTON SENNA");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> paymentService.actualizar(cliente.getIdCliente(), idMetodo, request));
+        verify(metodoPagoRepository, never()).save(any());
     }
 }

@@ -93,4 +93,40 @@ public class MetodoPago {
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
+
+    public void setTipo(String tipo) {
+        this.tipo = tipo;
+    }
+
+    public void setUltimos4Digitos(String ultimos4Digitos) {
+        this.ultimos4Digitos = ultimos4Digitos;
+    }
+
+    public void setProveedorToken(String proveedorToken) {
+        this.proveedorToken = proveedorToken;
+    }
+
+    public void setFechaExpiracion(String fechaExpiracion) {
+        this.fechaExpiracion = fechaExpiracion;
+    }
+
+    public void setNombreTitular(String nombreTitular) {
+        this.nombreTitular = nombreTitular;
+    }
+
+    public void actualizar(String tipo, String ultimos4Digitos, String proveedorToken, String fechaExpiracion, String nombreTitular) {
+        if (tipo != null && !tipo.isBlank()) {
+            this.tipo = tipo;
+        }
+        if (ultimos4Digitos != null && !ultimos4Digitos.isBlank()) {
+            this.ultimos4Digitos = ultimos4Digitos;
+        }
+        if (proveedorToken != null && !proveedorToken.isBlank()) {
+            this.proveedorToken = proveedorToken;
+        }
+        if (fechaExpiracion != null && !fechaExpiracion.isBlank()) {
+            this.fechaExpiracion = fechaExpiracion;
+        }
+        this.nombreTitular = nombreTitular;
+    }
 }

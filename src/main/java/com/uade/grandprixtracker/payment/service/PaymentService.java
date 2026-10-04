@@ -1,5 +1,6 @@
 package com.uade.grandprixtracker.payment.service;
 
+import com.uade.grandprixtracker.payment.dto.MetodoPagoRequestDto;
 import com.uade.grandprixtracker.payment.dto.MetodoPagoResponseDto;
 import com.uade.grandprixtracker.payment.dto.PagoRequestDto;
 import com.uade.grandprixtracker.payment.model.MetodoPago;
@@ -39,16 +40,73 @@ public class PaymentService {
 
         return metodoPagoRepository.findByClienteIdClienteOrderByCreatedAtDesc(idCliente)
                 .stream()
-                .map(m -> new MetodoPagoResponseDto(
-                        m.getIdMetodo(),
-                        m.getTipo(),
-                        m.getUltimos4Digitos(),
-                        m.getFechaExpiracion(),
-                        estaVencida(m.getFechaExpiracion()),
-                        m.getNombreTitular(),
-                        cliente.getTelefono(),
-                        cliente.getDni()))
+                .map(m -> toDto(m, cliente))
                 .toList();
+    }
+
+    @Transactional
+    public MetodoPagoResponseDto agregar(UUID idCliente, MetodoPagoRequestDto request) {
+        Cliente cliente = clienteRepository.findById(idCliente)
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente", "id", idCliente));
+
+        if (isBlank(request.proveedorToken())) {
+            throw new IllegalArgumentException("El token del proveedor es obligatorio");
+        }
+
+        if (estaVencida(request.fechaExpiracion())) {
+            throw new IllegalArgumentException("La tarjeta está vencida");
+        }
+
+        MetodoPago metodo = new MetodoPago(
+                null,
+                cliente,
+                request.tipo(),
+                request.ultimos4Digitos(),
+                request.proveedorToken(),
+                request.fechaExpiracion(),
+                OffsetDateTime.now(clock),
+                request.nombreTitular()
+        );
+
+        MetodoPago guardado = metodoPagoRepository.save(metodo);
+        return toDto(guardado, cliente);
+    }
+
+    @Transactional
+    public MetodoPagoResponseDto actualizar(UUID idCliente, UUID idMetodo, MetodoPagoRequestDto request) {
+        Cliente cliente = clienteRepository.findById(idCliente)
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente", "id", idCliente));
+
+        MetodoPago metodo = metodoPagoRepository.findByIdMetodoAndClienteIdCliente(idMetodo, idCliente)
+                .orElseThrow(() -> new ResourceNotFoundException("Método de pago", "id", idMetodo));
+
+        if (estaVencida(request.fechaExpiracion())) {
+            throw new IllegalArgumentException("La tarjeta está vencida");
+        }
+
+        metodo.actualizar(
+                request.tipo(),
+                request.ultimos4Digitos(),
+                request.proveedorToken(),
+                request.fechaExpiracion(),
+                request.nombreTitular()
+        );
+
+        MetodoPago guardado = metodoPagoRepository.save(metodo);
+        return toDto(guardado, cliente);
+    }
+
+    private MetodoPagoResponseDto toDto(MetodoPago m, Cliente cliente) {
+        return new MetodoPagoResponseDto(
+                m.getIdMetodo(),
+                m.getTipo(),
+                m.getUltimos4Digitos(),
+                m.getFechaExpiracion(),
+                estaVencida(m.getFechaExpiracion()),
+                m.getNombreTitular(),
+                cliente.getTelefono(),
+                cliente.getDni()
+        );
     }
 
     /**

@@ -263,6 +263,58 @@ El tipo `Credito`/`Debito` no indica la marca (Visa, Mastercard); hoy la base no
 
 **Errores**: `401` sin token o con token vencido o inválido · `404` si el cliente no existe.
 
+### `POST /payment-methods`
+
+Registra una nueva tarjeta para el usuario autenticado (se puede usar también desde el alias `/users/me/payment-methods`).
+
+**Headers**: `Authorization: Bearer <token>`, `Content-Type: application/json`
+
+**Body**:
+
+```json
+{
+  "tipo": "Credito",
+  "ultimos4Digitos": "1234",
+  "fechaExpiracion": "12/26",
+  "proveedorToken": "tok_simulado_123",
+  "nombre_titular": "AYRTON SENNA"
+}
+```
+
+*Nota*: acepta tanto `nombre_titular` como `nombreTitular`.
+
+**Respuesta `201`**: `ApiResponse<MetodoPago>` con `message: "Método de pago agregado correctamente"`.
+
+**Errores**:
+- `400` si los campos son inválidos (formato de expiración distinto de `MM/AA`, tipo distinto de `Credito`/`Debito`, tarjeta ya vencida, etc.).
+- `401` sin token o con sesión inválida.
+- `404` si el cliente no existe.
+
+### `PUT /payment-methods/{id}`
+
+Actualiza los datos de una tarjeta existente del usuario autenticado (soporta también `/users/me/payment-methods/{id}`).
+
+**Headers**: `Authorization: Bearer <token>`, `Content-Type: application/json`
+
+**Body**: (misma forma que el `POST`)
+
+```json
+{
+  "tipo": "Credito",
+  "ultimos4Digitos": "1234",
+  "fechaExpiracion": "12/26",
+  "proveedorToken": "tok_simulado_123",
+  "nombre_titular": "AYRTON SENNA"
+}
+```
+
+**Respuesta `200`**: `ApiResponse<MetodoPago>` con `message: "Método de pago actualizado correctamente"`.
+
+**Errores**:
+- `400` si `id` no es UUID o los datos del body son inválidos.
+- `401` sin token o con sesión inválida.
+- `404` si el método de pago no existe o pertenece a otro usuario.
+
 ---
 
 ## Usuarios y Perfil
@@ -560,7 +612,7 @@ Los `message` de estos errores están en español y se pueden mostrar tal cual.
 
 ## Endpoints que todavía no existen
 
-- **Alta y baja de tarjetas** (`AddPaymentModal` del perfil). Hoy una tarjeta nueva solo se guarda al usarla en una compra.
+- **Baja de tarjetas** (eliminación de métodos de pago).
 - **Datos del cliente** (`DatosView` del perfil). El registro y el login los hace el front directo contra Supabase Auth; el backend no tiene endpoints de auth.
 - **Traslados**: no existen en la base (ver [`checkout.md`](./checkout.md#limitaciones-conocidas)).
 
