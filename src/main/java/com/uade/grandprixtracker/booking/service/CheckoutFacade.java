@@ -20,6 +20,7 @@ import com.uade.grandprixtracker.hotel.service.HotelService;
 import com.uade.grandprixtracker.payment.model.MetodoPago;
 import com.uade.grandprixtracker.payment.service.PaymentService;
 import com.uade.grandprixtracker.shared.exception.ResourceNotFoundException;
+import com.uade.grandprixtracker.ticket.client.TicketingMicroserviceClient;
 import com.uade.grandprixtracker.ticket.model.EntradaGrada;
 import com.uade.grandprixtracker.ticket.service.TicketService;
 import com.uade.grandprixtracker.user.model.Cliente;
@@ -51,6 +52,7 @@ public class CheckoutFacade {
     private final EventoF1Repository eventoF1Repository;
     private final ReservaRepository reservaRepository;
     private final TicketService ticketService;
+    private final TicketingMicroserviceClient ticketingMicroserviceClient;
     private final HotelService hotelService;
     private final FlightService flightService;
     private final PaymentService paymentService;
@@ -62,6 +64,7 @@ public class CheckoutFacade {
                           EventoF1Repository eventoF1Repository,
                           ReservaRepository reservaRepository,
                           TicketService ticketService,
+                          TicketingMicroserviceClient ticketingMicroserviceClient,
                           HotelService hotelService,
                           FlightService flightService,
                           PaymentService paymentService,
@@ -71,6 +74,7 @@ public class CheckoutFacade {
         this.eventoF1Repository = eventoF1Repository;
         this.reservaRepository = reservaRepository;
         this.ticketService = ticketService;
+        this.ticketingMicroserviceClient = ticketingMicroserviceClient;
         this.hotelService = hotelService;
         this.flightService = flightService;
         this.paymentService = paymentService;
@@ -114,6 +118,9 @@ public class CheckoutFacade {
         request.entradas().stream()
                 .sorted(Comparator.comparing(EntradaItem::idEntrada))
                 .forEach(item -> {
+                    // 1. Chequea disponibilidad y descuenta stock en el sistema SOAP mediante el microservicio
+                    ticketingMicroserviceClient.reservar(item.idEntrada(), item.cantidad());
+                    // 2. Descuenta stock propio en Supabase
                     EntradaGrada entrada = ticketService.reservar(evento.getIdEvento(), item.idEntrada(), item.cantidad());
                     BigDecimal subtotal = entrada.getPrecioUsd().multiply(BigDecimal.valueOf(item.cantidad()));
                     reserva.agregarEntrada(new ReservaDetalleEntrada(entrada, item.cantidad(), subtotal));

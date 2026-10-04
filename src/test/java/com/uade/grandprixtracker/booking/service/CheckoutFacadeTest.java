@@ -2,6 +2,7 @@ package com.uade.grandprixtracker.booking.service;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
 import com.uade.grandprixtracker.booking.dto.CheckoutRequestDto;
@@ -26,6 +27,7 @@ import com.uade.grandprixtracker.payment.model.MetodoPago;
 import com.uade.grandprixtracker.payment.service.PaymentService;
 import com.uade.grandprixtracker.shared.exception.ResourceNotFoundException;
 import com.uade.grandprixtracker.shared.exception.StockInsuficienteException;
+import com.uade.grandprixtracker.ticket.client.TicketingMicroserviceClient;
 import com.uade.grandprixtracker.ticket.model.EntradaGrada;
 import com.uade.grandprixtracker.ticket.service.TicketService;
 import com.uade.grandprixtracker.user.model.Cliente;
@@ -56,6 +58,7 @@ class CheckoutFacadeTest {
     @Mock private EventoF1Repository eventoF1Repository;
     @Mock private ReservaRepository reservaRepository;
     @Mock private TicketService ticketService;
+    @Mock private TicketingMicroserviceClient ticketingMicroserviceClient;
     @Mock private HotelService hotelService;
     @Mock private FlightService flightService;
     @Mock private PaymentService paymentService;
@@ -75,7 +78,7 @@ class CheckoutFacadeTest {
     @BeforeEach
     void setUp() {
         checkoutFacade = new CheckoutFacade(clienteRepository, eventoF1Repository, reservaRepository,
-                ticketService, hotelService, flightService, paymentService, CLOCK, eventPublisher);
+                ticketService, ticketingMicroserviceClient, hotelService, flightService, paymentService, CLOCK, eventPublisher);
 
         idCliente = UUID.randomUUID();
         idEvento = UUID.randomUUID();
@@ -253,6 +256,26 @@ class CheckoutFacadeTest {
                 idEvento, List.of(new EntradaItem(idEntrada, 5)), null, null, pago);
 
         assertThrows(StockInsuficienteException.class, () -> checkoutFacade.checkout(idCliente, request));
+        verify(ticketingMicroserviceClient).reservar(idEntrada, 5);
+        verify(reservaRepository, never()).save(any());
+    }
+
+    @Test
+    void checkout_SinStockEnMicroservicioSoap_LanzaStockInsuficienteExceptionYNoTocaSupabase() {
+        stubClienteYEvento();
+        when(paymentService.cobrar(cliente, pago)).thenReturn(metodoPago);
+        UUID idEntrada = UUID.randomUUID();
+        when(ticketingMicroserviceClient.reservar(idEntrada, 5))
+                .thenThrow(new StockInsuficienteException("Stock insuficiente para la tribuna 'Paddock Club Madrid' en el evento 'F1-2026-MAD'."));
+
+        CheckoutRequestDto request = new CheckoutRequestDto(
+                idEvento, List.of(new EntradaItem(idEntrada, 5)), null, null, pago);
+
+        StockInsuficienteException ex = assertThrows(StockInsuficienteException.class,
+                () -> checkoutFacade.checkout(idCliente, request));
+
+        assertTrue(ex.getMessage().contains("Stock insuficiente"));
+        verify(ticketService, never()).reservar(any(), any(), anyInt());
         verify(reservaRepository, never()).save(any());
     }
 
