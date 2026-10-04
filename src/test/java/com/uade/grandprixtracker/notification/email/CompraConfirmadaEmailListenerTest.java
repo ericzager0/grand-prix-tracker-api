@@ -91,9 +91,12 @@ class CompraConfirmadaEmailListenerTest {
         assertTrue(html.contains("width=\"700\""));
         assertTrue(html.contains("max-width:700px"));
 
-        // 4) Logo de la app presente en el template
-        assertTrue(html.contains("data:image/png;base64,"));
+        // 4) Logo de la app presente en el template vía HTTPS
+        assertTrue(html.contains("src=\"https://raw.githubusercontent.com/ericzager0/grand-prix-tracker-api/main/src/assets/logo-nobg.png\""));
         assertTrue(html.contains("alt=\"Grand Prix Tracker\""));
+
+        // 5) Tamaño del HTML < 10KB (lejos del límite de 102KB de Gmail para evitar recorte)
+        assertTrue(html.length() < 10000);
     }
 
     @Test
@@ -112,6 +115,7 @@ class CompraConfirmadaEmailListenerTest {
         assertFalse(html.contains("Transporte al circuito"));
         assertTrue(html.contains("#E10600"));
         assertTrue(html.contains("width=\"700\""));
-        assertTrue(html.contains("data:image/png;base64,"));
+        assertTrue(html.contains("src=\"https://raw.githubusercontent.com/ericzager0/grand-prix-tracker-api/main/src/assets/logo-nobg.png\""));
+        assertTrue(html.length() < 10000);
     }
 }
