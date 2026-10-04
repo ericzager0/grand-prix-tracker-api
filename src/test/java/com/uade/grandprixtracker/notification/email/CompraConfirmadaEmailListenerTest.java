@@ -58,14 +58,13 @@ class CompraConfirmadaEmailListenerTest {
                         LocalDate.of(2026, 11, 8),
                         new ReservaResponseDto.CircuitoResumen(
                                 "Interlagos",
-                                new ReservaResponseDto.CiudadResumen("Sao Paulo", new ReservaResponseDto.PaisResumen("Brasil", "BR"))
-                        )
-                ),
+                                new ReservaResponseDto.CiudadResumen("Sao Paulo",
+                                        new ReservaResponseDto.PaisResumen("Brasil", "BR")))),
                 List.of(new ReservaResponseDto.EntradaLinea(
-                        UUID.randomUUID(), "Tribuna A", "General", 2, new BigDecimal("1250.00"), new BigDecimal("2500.00"))),
+                        UUID.randomUUID(), "Tribuna A", "General", 2, new BigDecimal("1250.00"),
+                        new BigDecimal("2500.00"))),
                 List.of(),
-                List.of()
-        );
+                List.of());
     }
 
     @Test
@@ -83,8 +82,8 @@ class CompraConfirmadaEmailListenerTest {
         // 1) Rojo #E10600
         assertTrue(html.contains("#E10600"));
 
-        // 2) TRANSLADO con 30 USD
-        assertTrue(html.contains("TRANSLADO"));
+        // 2) Translado con 30 USD
+        assertTrue(html.contains("Translado"));
         assertTrue(html.contains("US$ 30.00"));
 
         // 3) Recuadro más ancho (700px)
@@ -92,10 +91,12 @@ class CompraConfirmadaEmailListenerTest {
         assertTrue(html.contains("max-width:700px"));
 
         // 4) Logo de la app presente en el template vía HTTPS
-        assertTrue(html.contains("src=\"https://raw.githubusercontent.com/ericzager0/grand-prix-tracker-api/main/src/assets/logo-nobg.png\""));
+        assertTrue(html.contains(
+                "src=\"https://raw.githubusercontent.com/ericzager0/grand-prix-tracker-api/main/src/assets/logo-nobg.png\""));
         assertTrue(html.contains("alt=\"Grand Prix Tracker\""));
 
-        // 5) Tamaño del HTML < 10KB (lejos del límite de 102KB de Gmail para evitar recorte)
+        // 5) Tamaño del HTML < 10KB (lejos del límite de 102KB de Gmail para evitar
+        // recorte)
         assertTrue(html.length() < 10000);
     }
 
@@ -111,11 +112,12 @@ class CompraConfirmadaEmailListenerTest {
 
         String html = htmlCaptor.getValue();
 
-        assertFalse(html.contains("TRANSLADO"));
+        assertFalse(html.contains("Translado"));
         assertFalse(html.contains("Transporte al circuito"));
         assertTrue(html.contains("#E10600"));
         assertTrue(html.contains("width=\"700\""));
-        assertTrue(html.contains("src=\"https://raw.githubusercontent.com/ericzager0/grand-prix-tracker-api/main/src/assets/logo-nobg.png\""));
+        assertTrue(html.contains(
+                "src=\"https://raw.githubusercontent.com/ericzager0/grand-prix-tracker-api/main/src/assets/logo-nobg.png\""));
         assertTrue(html.length() < 10000);
     }
 }

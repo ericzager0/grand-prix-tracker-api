@@ -78,7 +78,7 @@ public class CompraConfirmadaEmailListener {
     private Map<String, String> variables(CompraConfirmadaEvent event) {
         ReservaResponseDto r = event.reserva();
         String logoHtml = (logoUrl != null && !logoUrl.isBlank())
-                ? "<img src=\"" + esc(logoUrl) + "\" alt=\"Grand Prix Tracker\" width=\"75\" height=\"81\" style=\"display:block;margin:0 auto 12px auto;max-width:75px;height:auto;border:0;\" />"
+                ? "<img src=\"" + esc(logoUrl) + "\" alt=\"Grand Prix Tracker\" width=\"60\" height=\"65\" style=\"display:block;margin:16px auto 0 auto;max-width:60px;height:auto;border:0;\" />"
                 : "";
 
         return Map.of(
@@ -114,7 +114,7 @@ public class CompraConfirmadaEmailListener {
             }
         }
         if (r.incluyeTransporte()) {
-            filas.append(fila("TRANSLADO", BigDecimal.valueOf(30)));
+            filas.append(fila("Translado", BigDecimal.valueOf(30)));
         }
         return filas.toString();
     }
