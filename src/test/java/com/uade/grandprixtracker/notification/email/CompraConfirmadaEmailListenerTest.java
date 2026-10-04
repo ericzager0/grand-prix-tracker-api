@@ -79,8 +79,9 @@ class CompraConfirmadaEmailListenerTest {
 
         String html = htmlCaptor.getValue();
 
-        // 1) Rojo #E10600
+        // 1) Rojo #E10600 y barra inferior #0B0B10
         assertTrue(html.contains("#E10600"));
+        assertTrue(html.contains("#0B0B10"));
 
         // 2) Translado con 30 USD
         assertTrue(html.contains("Translado"));
@@ -115,6 +116,7 @@ class CompraConfirmadaEmailListenerTest {
         assertFalse(html.contains("Translado"));
         assertFalse(html.contains("Transporte al circuito"));
         assertTrue(html.contains("#E10600"));
+        assertTrue(html.contains("#0B0B10"));
         assertTrue(html.contains("width=\"700\""));
         assertTrue(html.contains(
                 "src=\"https://raw.githubusercontent.com/ericzager0/grand-prix-tracker-api/main/src/assets/logo-nobg.png\""));

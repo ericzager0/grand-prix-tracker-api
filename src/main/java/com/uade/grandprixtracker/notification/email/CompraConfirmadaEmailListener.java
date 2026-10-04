@@ -78,7 +78,7 @@ public class CompraConfirmadaEmailListener {
     private Map<String, String> variables(CompraConfirmadaEvent event) {
         ReservaResponseDto r = event.reserva();
         String logoHtml = (logoUrl != null && !logoUrl.isBlank())
-                ? "<img src=\"" + esc(logoUrl) + "\" alt=\"Grand Prix Tracker\" width=\"60\" height=\"65\" style=\"display:block;margin:16px auto 0 auto;max-width:60px;height:auto;border:0;\" />"
+                ? "<img src=\"" + esc(logoUrl) + "\" alt=\"Grand Prix Tracker\" width=\"60\" height=\"65\" style=\"display:block;margin:0 auto;max-width:60px;height:auto;border:0;\" />"
                 : "";
 
         return Map.of(
