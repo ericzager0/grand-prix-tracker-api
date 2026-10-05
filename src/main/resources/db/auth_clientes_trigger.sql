@@ -5,18 +5,19 @@
 
 -- 1. TRIGGER: auth.users -> public.clientes
 -- Cuando un usuario se registra o actualiza en Supabase Auth, se sincroniza en `clientes`
--- incluyendo nombre, apellido, email, teléfono y DNI.
+-- incluyendo nombre, apellido, email, teléfono, DNI y color.
 create or replace function public.handle_new_auth_user()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin
-  insert into public.clientes (id_cliente, nombre, apellido, email, telefono, dni)
+  insert into public.clientes (id_cliente, nombre, apellido, email, telefono, dni, color)
   values (
     new.id,
     coalesce(nullif(new.raw_user_meta_data->>'nombre', ''), split_part(new.email, '@', 1)),
     coalesce(new.raw_user_meta_data->>'apellido', ''),
     new.email,
     coalesce(nullif(new.raw_user_meta_data->>'telefono', ''), new.phone),
-    nullif(new.raw_user_meta_data->>'dni', '')::numeric
+    nullif(new.raw_user_meta_data->>'dni', '')::numeric,
+    nullif(new.raw_user_meta_data->>'color', '')
   )
   on conflict (id_cliente) do update
   set
@@ -24,7 +25,8 @@ begin
     apellido = coalesce(nullif(excluded.apellido, ''), clientes.apellido),
     email = coalesce(excluded.email, clientes.email),
     telefono = coalesce(excluded.telefono, clientes.telefono),
-    dni = coalesce(excluded.dni, clientes.dni);
+    dni = coalesce(excluded.dni, clientes.dni),
+    color = coalesce(excluded.color, clientes.color);
   return new;
 end; $$;
 
@@ -34,19 +36,21 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_auth_user();
 
 -- 2. TRIGGER: public.clientes -> auth.users (Opción A: sincroniza user_metadata)
--- Cuando se inserte o actualice `telefono` o `dni` en `clientes`, se actualiza automáticamente
+-- Cuando se inserte o actualice `telefono`, `dni` o `color` en `clientes`, se actualiza automáticamente
 -- en `auth.users.raw_user_meta_data` para que el frontend lo lea de inmediato
 -- sin necesidad de queries directas a la base de datos.
 create or replace function public.sync_cliente_to_auth_user()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin
   if (new.telefono is not null and (old is null or new.telefono is distinct from old.telefono)) or
-     (new.dni is not null and (old is null or new.dni is distinct from old.dni)) then
+     (new.dni is not null and (old is null or new.dni is distinct from old.dni)) or
+     (new.color is not null and (old is null or new.color is distinct from old.color)) then
     update auth.users
     set raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) ||
       jsonb_strip_nulls(jsonb_build_object(
         'telefono', new.telefono,
-        'dni', new.dni
+        'dni', new.dni,
+        'color', new.color
       ))
     where id = new.id_cliente;
   end if;
@@ -55,20 +59,21 @@ end; $$;
 
 drop trigger if exists on_cliente_updated on public.clientes;
 create trigger on_cliente_updated
-  after insert or update of telefono, dni on public.clientes
+  after insert or update of telefono, dni, color on public.clientes
   for each row execute function public.sync_cliente_to_auth_user();
 
--- 3. BACKFILL: Sincronizar teléfonos y DNI existentes hacia auth.users
--- Copia los teléfonos y DNIs que ya existan en la tabla `clientes` hacia `auth.users.raw_user_meta_data`.
+-- 3. BACKFILL: Sincronizar teléfonos, DNI y colores existentes hacia auth.users
+-- Copia los teléfonos, DNIs y colores que ya existan en la tabla `clientes` hacia `auth.users.raw_user_meta_data`.
 update auth.users u
 set raw_user_meta_data = coalesce(u.raw_user_meta_data, '{}'::jsonb) ||
   jsonb_strip_nulls(jsonb_build_object(
     'telefono', c.telefono,
-    'dni', c.dni
+    'dni', c.dni,
+    'color', c.color
   ))
 from public.clientes c
 where u.id = c.id_cliente
-  and (c.telefono is not null or c.dni is not null);
+  and (c.telefono is not null or c.dni is not null or c.color is not null);
 
 -- 4. POLÍTICAS RLS: Habilitar lectura y edición directa en clientes (Opción B)
 -- Permite que el front haga: supabase.from('clientes').select('telefono').eq('id_cliente', user.id).single()

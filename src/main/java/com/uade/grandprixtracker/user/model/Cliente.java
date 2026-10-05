@@ -29,20 +29,28 @@ public class Cliente {
     @Column(name = "dni")
     private java.math.BigDecimal dni;
 
+    @Column(name = "color")
+    private String color;
+
     public Cliente() {
     }
 
     public Cliente(UUID idCliente, String nombre, String apellido, String email, String telefono) {
-        this(idCliente, nombre, apellido, email, telefono, null);
+        this(idCliente, nombre, apellido, email, telefono, null, null);
     }
 
     public Cliente(UUID idCliente, String nombre, String apellido, String email, String telefono, java.math.BigDecimal dni) {
+        this(idCliente, nombre, apellido, email, telefono, dni, null);
+    }
+
+    public Cliente(UUID idCliente, String nombre, String apellido, String email, String telefono, java.math.BigDecimal dni, String color) {
         this.idCliente = idCliente;
         this.nombre = nombre;
         this.apellido = apellido;
         this.email = email;
         this.telefono = telefono;
         this.dni = dni;
+        this.color = color;
     }
 
     public UUID getIdCliente() {
@@ -91,5 +99,13 @@ public class Cliente {
 
     public void setDni(java.math.BigDecimal dni) {
         this.dni = dni;
+    }
+
+    public String getColor() {
+        return color;
+    }
+
+    public void setColor(String color) {
+        this.color = color;
     }
 }

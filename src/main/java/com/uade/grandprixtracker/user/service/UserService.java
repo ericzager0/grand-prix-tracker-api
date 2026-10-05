@@ -46,6 +46,13 @@ public class UserService {
 
         cliente.setDni(request.dni());
 
+        if (request.color() != null) {
+            String col = request.color().trim();
+            cliente.setColor(col.isEmpty() ? null : col);
+        } else {
+            cliente.setColor(null);
+        }
+
         Cliente guardado = clienteRepository.save(cliente);
         return toDto(guardado);
     }
@@ -57,7 +64,8 @@ public class UserService {
                 cliente.getApellido(),
                 cliente.getEmail(),
                 cliente.getTelefono(),
-                cliente.getDni()
+                cliente.getDni(),
+                cliente.getColor()
         );
     }
 }

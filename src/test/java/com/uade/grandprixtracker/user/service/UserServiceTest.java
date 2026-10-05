@@ -33,10 +33,10 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("Debe actualizar el perfil de un cliente existente")
+    @DisplayName("Debe actualizar el perfil de un cliente existente incluyendo color")
     void testUpsertProfile_ExistingCliente_UpdatesFields() {
         UUID idCliente = UUID.randomUUID();
-        Cliente existente = new Cliente(idCliente, "Juan", "Perez", "juan@example.com", "+54 11 1111", new BigDecimal("35000000"));
+        Cliente existente = new Cliente(idCliente, "Juan", "Perez", "juan@example.com", "+54 11 1111", new BigDecimal("35000000"), "#123456");
 
         when(clienteRepository.findById(idCliente)).thenReturn(Optional.of(existente));
         when(clienteRepository.save(any(Cliente.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -45,7 +45,8 @@ class UserServiceTest {
                 "Juan Carlos",
                 "Perez Gomez",
                 "+54 11 9999-8888",
-                new BigDecimal("40123456")
+                new BigDecimal("40123456"),
+                "#AHSC3"
         );
 
         UserProfileResponseDto resultado = userService.upsertProfile(idCliente, request, "fallback@example.com");
@@ -56,6 +57,7 @@ class UserServiceTest {
         assertEquals("Perez Gomez", resultado.apellido());
         assertEquals("+54 11 9999-8888", resultado.telefono());
         assertEquals(new BigDecimal("40123456"), resultado.dni());
+        assertEquals("#AHSC3", resultado.color());
         assertEquals("juan@example.com", resultado.email());
         verify(clienteRepository).save(existente);
     }
@@ -71,6 +73,7 @@ class UserServiceTest {
                 "Carlos",
                 "Sainz",
                 null,
+                null,
                 null
         );
 
@@ -82,15 +85,39 @@ class UserServiceTest {
         assertEquals("Sainz", resultado.apellido());
         assertNull(resultado.telefono());
         assertNull(resultado.dni());
+        assertNull(resultado.color());
         assertEquals("carlos@ferrari.com", resultado.email());
         verify(clienteRepository).save(any(Cliente.class));
     }
 
     @Test
-    @DisplayName("Debe obtener el perfil existente")
+    @DisplayName("Debe convertir color vacío en null al actualizar perfil")
+    void testUpsertProfile_EmptyColor_SavesAsNull() {
+        UUID idCliente = UUID.randomUUID();
+        Cliente existente = new Cliente(idCliente, "Juan", "Perez", "juan@example.com", null, null, "#E10600");
+
+        when(clienteRepository.findById(idCliente)).thenReturn(Optional.of(existente));
+        when(clienteRepository.save(any(Cliente.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateUserProfileRequestDto request = new UpdateUserProfileRequestDto(
+                "Juan",
+                "Perez",
+                null,
+                null,
+                "   "
+        );
+
+        UserProfileResponseDto resultado = userService.upsertProfile(idCliente, request, null);
+
+        assertNotNull(resultado);
+        assertNull(resultado.color());
+    }
+
+    @Test
+    @DisplayName("Debe obtener el perfil existente con color")
     void testGetProfile_Found() {
         UUID idCliente = UUID.randomUUID();
-        Cliente existente = new Cliente(idCliente, "Franco", "Colapinto", "franco@williams.com", "+54 11 5555", new BigDecimal("44111222"));
+        Cliente existente = new Cliente(idCliente, "Franco", "Colapinto", "franco@williams.com", "+54 11 5555", new BigDecimal("44111222"), "#AHSC3");
         when(clienteRepository.findById(idCliente)).thenReturn(Optional.of(existente));
 
         UserProfileResponseDto resultado = userService.getProfile(idCliente);
@@ -99,6 +126,7 @@ class UserServiceTest {
         assertEquals("Franco", resultado.nombre());
         assertEquals("Colapinto", resultado.apellido());
         assertEquals(new BigDecimal("44111222"), resultado.dni());
+        assertEquals("#AHSC3", resultado.color());
     }
 
     @Test

@@ -10,7 +10,8 @@ public record UserProfileResponseDto(
         String apellido,
         String email,
         String telefono,
-        BigDecimal dni
+        BigDecimal dni,
+        String color
 ) {
     @JsonProperty("id_cliente")
     public UUID id_cliente() {

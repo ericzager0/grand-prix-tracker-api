@@ -17,5 +17,8 @@ public record UpdateUserProfileRequestDto(
         String telefono,
 
         @JsonProperty("dni")
-        BigDecimal dni
+        BigDecimal dni,
+
+        @JsonProperty("color")
+        String color
 ) {}

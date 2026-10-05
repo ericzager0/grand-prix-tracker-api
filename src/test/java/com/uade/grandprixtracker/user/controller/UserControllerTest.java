@@ -49,7 +49,8 @@ class UserControllerTest {
                 "Norris",
                 "lando@mclaren.com",
                 "+44 7700 900077",
-                new BigDecimal("34567890")
+                new BigDecimal("34567890"),
+                "#FF8000"
         );
 
         when(userService.upsertProfile(eq(idCliente), any(UpdateUserProfileRequestDto.class), any()))
@@ -60,7 +61,8 @@ class UserControllerTest {
                   "nombre": "Lando",
                   "apellido": "Norris",
                   "telefono": "+44 7700 900077",
-                  "dni": 34567890
+                  "dni": 34567890,
+                  "color": "#FF8000"
                 }
                 """;
 
@@ -73,11 +75,12 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.data.nombre").value("Lando"))
                 .andExpect(jsonPath("$.data.apellido").value("Norris"))
                 .andExpect(jsonPath("$.data.telefono").value("+44 7700 900077"))
-                .andExpect(jsonPath("$.data.dni").value(34567890));
+                .andExpect(jsonPath("$.data.dni").value(34567890))
+                .andExpect(jsonPath("$.data.color").value("#FF8000"));
     }
 
     @Test
-    @DisplayName("PUT /profile (ruta alternativa) exitoso con teléfono y DNI nulos")
+    @DisplayName("PUT /profile (ruta alternativa) exitoso con teléfono, DNI y color nulos")
     void testUpdateProfile_AlternativePath_WithNulls() throws Exception {
         UUID idCliente = UUID.randomUUID();
         UserProfileResponseDto responseDto = new UserProfileResponseDto(
@@ -85,6 +88,7 @@ class UserControllerTest {
                 "Oscar",
                 "Piastri",
                 "oscar@mclaren.com",
+                null,
                 null,
                 null
         );
@@ -97,7 +101,8 @@ class UserControllerTest {
                   "nombre": "Oscar",
                   "apellido": "Piastri",
                   "telefono": null,
-                  "dni": null
+                  "dni": null,
+                  "color": null
                 }
                 """;
 
@@ -110,7 +115,8 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.data.nombre").value("Oscar"))
                 .andExpect(jsonPath("$.data.apellido").value("Piastri"))
                 .andExpect(jsonPath("$.data.telefono").doesNotExist())
-                .andExpect(jsonPath("$.data.dni").doesNotExist());
+                .andExpect(jsonPath("$.data.dni").doesNotExist())
+                .andExpect(jsonPath("$.data.color").doesNotExist());
     }
 
     @Test
@@ -149,7 +155,7 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("GET /users/profile obtiene el perfil del usuario autenticado")
+    @DisplayName("GET /users/profile obtiene el perfil del usuario autenticado con color")
     void testGetProfile_Success() throws Exception {
         UUID idCliente = UUID.randomUUID();
         UserProfileResponseDto responseDto = new UserProfileResponseDto(
@@ -158,7 +164,8 @@ class UserControllerTest {
                 "Verstappen",
                 "max@redbull.com",
                 "+31 6 12345678",
-                new BigDecimal("11223344")
+                new BigDecimal("11223344"),
+                "#0B0B10"
         );
 
         when(userService.getProfile(idCliente)).thenReturn(responseDto);
@@ -168,6 +175,7 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.nombre").value("Max"))
-                .andExpect(jsonPath("$.data.email").value("max@redbull.com"));
+                .andExpect(jsonPath("$.data.email").value("max@redbull.com"))
+                .andExpect(jsonPath("$.data.color").value("#0B0B10"));
     }
 }
