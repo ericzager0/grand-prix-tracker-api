@@ -22,9 +22,12 @@ import org.springframework.web.util.HtmlUtils;
  * Envía el email con el detalle de la compra una vez confirmada.
  *
  * Garantías para que la compra NUNCA falle por el email:
- *  - AFTER_COMMIT: solo se ejecuta si la transacción del checkout ya se guardó en la BD.
- *  - @Async: corre en otro hilo; el usuario recibe la respuesta sin esperar a Brevo.
- *  - try/catch: cualquier error (Brevo caído, API key inválida, etc.) solo se loguea.
+ * - AFTER_COMMIT: solo se ejecuta si la transacción del checkout ya se guardó
+ * en la BD.
+ * - @Async: corre en otro hilo; el usuario recibe la respuesta sin esperar a
+ * Brevo.
+ * - try/catch: cualquier error (Brevo caído, API key inválida, etc.) solo se
+ * loguea.
  */
 @Component
 public class CompraConfirmadaEmailListener {
@@ -59,7 +62,8 @@ public class CompraConfirmadaEmailListener {
         ReservaResponseDto reserva = event.reserva();
 
         if (!emailSender.isConfigured()) {
-            log.warn("Brevo no está configurado (BREVO_API_KEY / BREVO_SENDER_EMAIL). No se envía email de la reserva {}",
+            log.warn(
+                    "Brevo no está configurado (BREVO_API_KEY / BREVO_SENDER_EMAIL). No se envía email de la reserva {}",
                     reserva.codigoConfirmacion());
             return;
         }
@@ -68,7 +72,8 @@ public class CompraConfirmadaEmailListener {
             String html = templateRenderer.render(TEMPLATE, variables(event));
             String asunto = "Confirmación de compra " + reserva.codigoConfirmacion() + " - Grand Prix Tracker";
             emailSender.send(event.emailCliente(), event.nombreCliente(), asunto, html);
-            log.info("Email de confirmación enviado a {} para la reserva {}", event.emailCliente(), reserva.codigoConfirmacion());
+            log.info("Email de confirmación enviado a {} para la reserva {}", event.emailCliente(),
+                    reserva.codigoConfirmacion());
         } catch (Exception e) {
             log.error("No se pudo enviar el email de la reserva {} a {}: {}",
                     reserva.codigoConfirmacion(), event.emailCliente(), e.getMessage(), e);
@@ -78,7 +83,8 @@ public class CompraConfirmadaEmailListener {
     private Map<String, String> variables(CompraConfirmadaEvent event) {
         ReservaResponseDto r = event.reserva();
         String logoHtml = (logoUrl != null && !logoUrl.isBlank())
-                ? "<img src=\"" + esc(logoUrl) + "\" alt=\"Grand Prix Tracker\" width=\"60\" height=\"65\" style=\"display:block;margin:0 auto;max-width:60px;height:auto;border:0;\" />"
+                ? "<img src=\"" + esc(logoUrl)
+                        + "\" alt=\"Grand Prix Tracker\" width=\"60\" height=\"65\" style=\"display:block;margin:0 auto;max-width:60px;height:auto;border:0;\" />"
                 : "";
 
         return Map.of(
@@ -90,21 +96,22 @@ public class CompraConfirmadaEmailListener {
                 "detalle", filasDetalle(r),
                 "total", usd(r.totalUsd()),
                 "metodoPago", metodoPago(r),
-                "logo", logoHtml
-        );
+                "logo", logoHtml);
     }
 
     private String filasDetalle(ReservaResponseDto r) {
         StringBuilder filas = new StringBuilder();
         if (r.entradas() != null) {
             for (EntradaLinea e : r.entradas()) {
-                filas.append(fila("Entrada " + e.nombreTribuna() + " (" + e.tipo() + ") x" + e.cantidad(), e.subtotalUsd()));
+                filas.append(
+                        fila("Entrada " + e.nombreTribuna() + " (" + e.tipo() + ") x" + e.cantidad(), e.subtotalUsd()));
             }
         }
         if (r.habitaciones() != null) {
             for (HabitacionLinea h : r.habitaciones()) {
                 filas.append(fila("Hotel " + h.hotel() + " - " + h.tipo() + " (" + h.cantidadNoches() + " noches, "
-                        + h.fechaCheckIn().format(FECHA) + " al " + h.fechaCheckOut().format(FECHA) + ")", h.subtotalUsd()));
+                        + h.fechaCheckIn().format(FECHA) + " al " + h.fechaCheckOut().format(FECHA) + ")",
+                        h.subtotalUsd()));
             }
         }
         if (r.vuelos() != null) {
@@ -114,7 +121,7 @@ public class CompraConfirmadaEmailListener {
             }
         }
         if (r.incluyeTransporte()) {
-            filas.append(fila("Translado", BigDecimal.valueOf(30)));
+            filas.append(fila("Traslado", BigDecimal.valueOf(30)));
         }
         return filas.toString();
     }
