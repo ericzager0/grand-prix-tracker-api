@@ -189,5 +189,6 @@ La carpeta [`docs/`](./docs/) contiene documentación técnica adicional:
 - [`docs/api.md`](./docs/api.md) — Referencia de endpoints: qué recibe, qué devuelve y qué hace cada uno, cómo encadenarlos en el wizard de compra y datos de prueba. **Punto de partida para quien trabaje en el frontend.**
 - [`docs/db.md`](./docs/db.md) — Esquema de la base de datos (Supabase / PostgreSQL).
 - [`docs/checkout.md`](./docs/checkout.md) — Compra de paquetes: reglas de negocio, arquitectura y limitaciones.
+- [`docs/seguridad.md`](./docs/seguridad.md) — Qué se hizo en seguridad, por qué, y qué tiene que tener en cuenta el equipo.
 
 A medida que crezca el proyecto, se van a ir sumando ahí documentos explicando la lógica de negocio de cada feature y decisiones de arquitectura relevantes.
