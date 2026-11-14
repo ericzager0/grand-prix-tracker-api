@@ -158,4 +158,41 @@ class SecurityConfigTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:3000"));
     }
+
+    @Test
+    void preflight_DesdeElFrontDeProduccion_EstaPermitidoSinCredenciales() throws Exception {
+        mockMvc.perform(options("/bookings")
+                        .header(HttpHeaders.ORIGIN, "https://grand-prix-tracker-web.vercel.app")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "authorization,content-type"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "https://grand-prix-tracker-web.vercel.app"))
+                .andExpect(header().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS));
+    }
+
+    @Test
+    void preflight_DesdeOrigenNoPermitido_SeRechaza() throws Exception {
+        mockMvc.perform(options("/bookings")
+                        .header(HttpHeaders.ORIGIN, "https://sitio-malicioso.example")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "authorization"))
+                .andExpect(status().isForbidden())
+                .andExpect(header().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN));
+    }
+
+    @Test
+    void getPublico_DesdeOrigenNoPermitido_NoDevuelveHeaderDeCors() throws Exception {
+        when(eventService.getAllEvents()).thenReturn(List.of());
+
+        mockMvc.perform(get("/events").header(HttpHeaders.ORIGIN, "https://sitio-malicioso.example"))
+                .andExpect(header().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN));
+    }
+
+    @Test
+    void preflight_MetodoNoPermitido_SeRechaza() throws Exception {
+        mockMvc.perform(options("/bookings")
+                        .header(HttpHeaders.ORIGIN, "http://localhost:3000")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "DELETE"))
+                .andExpect(status().isForbidden());
+    }
 }

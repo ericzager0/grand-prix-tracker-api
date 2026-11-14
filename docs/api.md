@@ -30,7 +30,7 @@ Contrato HTTP del backend para quien consuma la API, principalmente el frontend 
 - **Fechas**: sin hora como `"YYYY-MM-DD"`; con hora como ISO-8601 (`"2026-11-05T12:00:00Z"`).
 - **Montos**: números decimales en USD (`350.00`).
 - **IDs**: UUID en string.
-- **CORS**: habilitado para cualquier origen.
+- **CORS**: solo para los orígenes de `CORS_ALLOWED_ORIGINS` (separados por coma). Por defecto, `https://grand-prix-tracker-web.vercel.app` y `http://localhost:3000`. Sin credenciales: el token viaja en el header `Authorization`, no en cookies. Métodos permitidos: `GET`, `POST`, `PUT`, `PATCH`, `OPTIONS`.
 
 ### Identificación del cliente
 
