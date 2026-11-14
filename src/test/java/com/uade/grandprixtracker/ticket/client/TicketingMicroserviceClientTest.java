@@ -5,6 +5,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
 import com.uade.grandprixtracker.shared.exception.ResourceNotFoundException;
+import com.uade.grandprixtracker.shared.exception.ServicioExternoException;
 import com.uade.grandprixtracker.shared.exception.StockInsuficienteException;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -172,7 +173,7 @@ class TicketingMicroserviceClientTest {
     }
 
     @Test
-    void reservar_ErrorInterno_LanzaIllegalStateException() {
+    void reservar_ErrorInterno_LanzaServicioExternoException() {
         UUID idEntrada = UUID.randomUUID();
         String jsonError = """
                 {
@@ -188,10 +189,22 @@ class TicketingMicroserviceClientTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(jsonError));
 
-        IllegalStateException ex = assertThrows(IllegalStateException.class,
+        ServicioExternoException ex = assertThrows(ServicioExternoException.class,
                 () -> client.reservar(idEntrada, 2));
 
         assertTrue(ex.getMessage().contains("Error en el microservicio de tickets"));
+        mockServer.verify();
+    }
+
+    @Test
+    void reservar_SinConexion_LanzaServicioExternoException() {
+        UUID idEntrada = UUID.randomUUID();
+        mockServer.expect(requestTo(URL))
+                .andRespond(request -> {
+                    throw new java.net.SocketTimeoutException("Read timed out");
+                });
+
+        assertThrows(ServicioExternoException.class, () -> client.reservar(idEntrada, 1));
         mockServer.verify();
     }
 }

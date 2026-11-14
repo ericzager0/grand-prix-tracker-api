@@ -1,6 +1,7 @@
 package com.uade.grandprixtracker.ticket.client;
 
 import com.uade.grandprixtracker.shared.exception.ResourceNotFoundException;
+import com.uade.grandprixtracker.shared.exception.ServicioExternoException;
 import com.uade.grandprixtracker.shared.exception.StockInsuficienteException;
 import java.io.InputStream;
 import java.time.Duration;
@@ -105,7 +106,7 @@ public class TicketingMicroserviceClient {
                                             ? errorMessage
                                             : "Parámetros de reserva inválidos");
                         }
-                        throw new IllegalStateException(
+                        throw new ServicioExternoException(
                                 "Error en el microservicio de tickets (" + status.value() + "): " + errorMessage);
                     })
                     .body(new ParameterizedTypeReference<TicketingApiResponse<TicketingMicroserviceResponse>>() {});
@@ -115,10 +116,10 @@ public class TicketingMicroserviceClient {
                 return response.data();
             }
 
-            throw new IllegalStateException("El microservicio de ticketing no devolvió información de la reserva.");
+            throw new ServicioExternoException("El microservicio de ticketing no devolvió información de la reserva.");
         } catch (ResourceAccessException ex) {
             log.error("Fallo de conexión con el microservicio de tickets: {}", ex.getMessage());
-            throw new IllegalStateException("No se pudo conectar con el microservicio de tickets: " + ex.getMessage(), ex);
+            throw new ServicioExternoException("No se pudo conectar con el microservicio de tickets: " + ex.getMessage(), ex);
         }
     }
 
