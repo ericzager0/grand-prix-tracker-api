@@ -35,7 +35,7 @@ public class UserService {
         });
 
         cliente.setNombre(request.nombre().trim());
-        cliente.setApellido(request.apellido().trim());
+        cliente.setApellido(request.apellido() != null ? request.apellido().trim() : "");
 
         if (request.telefono() != null) {
             String tel = request.telefono().trim();

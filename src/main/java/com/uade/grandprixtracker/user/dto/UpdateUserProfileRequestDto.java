@@ -9,7 +9,8 @@ public record UpdateUserProfileRequestDto(
         @JsonProperty("nombre")
         String nombre,
 
-        @NotBlank(message = "El apellido es obligatorio")
+        // Opcional: el front arma nombre y apellido partiendo el nombre completo, y con una sola palabra
+        // el apellido llega vacío. Se guarda como "" (la columna es NOT NULL).
         @JsonProperty("apellido")
         String apellido,
 

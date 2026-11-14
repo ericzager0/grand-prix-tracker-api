@@ -86,10 +86,8 @@ create policy "Clientes pueden leer su propio perfil"
   to authenticated
   using (id_cliente = (select auth.uid()));
 
+-- Sin política de UPDATE a propósito: el perfil se edita solo por la API (PUT /users/profile), que valida
+-- los datos y no deja cambiar el email. Una política de update por fila dejaba al usuario modificar
+-- cualquier columna de su fila (por ejemplo, poner el email de otra persona).
 drop policy if exists "Clientes pueden actualizar su propio perfil" on public.clientes;
-create policy "Clientes pueden actualizar su propio perfil"
-  on public.clientes
-  for update
-  to authenticated
-  using (id_cliente = (select auth.uid()))
-  with check (id_cliente = (select auth.uid()));
+revoke insert, update, delete on public.clientes from anon, authenticated;

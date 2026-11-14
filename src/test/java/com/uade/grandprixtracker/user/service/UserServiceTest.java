@@ -91,6 +91,24 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("Con apellido nulo o vacío guarda cadena vacía (nombre de una sola palabra)")
+    void testUpsertProfile_SinApellido_GuardaVacio() {
+        UUID idCliente = UUID.randomUUID();
+        Cliente existente = new Cliente(idCliente, "Juan", "Perez", "juan@example.com", null);
+
+        when(clienteRepository.findById(idCliente)).thenReturn(Optional.of(existente));
+        when(clienteRepository.save(any(Cliente.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UserProfileResponseDto conNull = userService.upsertProfile(idCliente,
+                new UpdateUserProfileRequestDto("Juan", null, null, null, null), null);
+        assertEquals("", conNull.apellido());
+
+        UserProfileResponseDto conBlancos = userService.upsertProfile(idCliente,
+                new UpdateUserProfileRequestDto("Juan", "   ", null, null, null), null);
+        assertEquals("", conBlancos.apellido());
+    }
+
+    @Test
     @DisplayName("Debe convertir color vacío en null al actualizar perfil")
     void testUpsertProfile_EmptyColor_SavesAsNull() {
         UUID idCliente = UUID.randomUUID();
