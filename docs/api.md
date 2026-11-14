@@ -80,7 +80,8 @@ interface ApiResponse<T> {
 | `403` | Autenticado pero sin permiso. Hoy ningún endpoint lo devuelve; si aparece, usa el mismo envoltorio. |
 | `404` | El recurso pedido, o alguno referenciado en el body, no existe. |
 | `409` | Conflicto de stock: alguien compró antes y ya no alcanza. |
-| `500` | Error inesperado del servidor. |
+| `500` | Error inesperado del servidor. El `message` es siempre genérico; el detalle queda solo en el log. |
+| `503` | Un sistema externo (microservicio de ticketing) no responde o falló. Se puede reintentar más tarde. |
 
 ---
 
@@ -521,10 +522,11 @@ Para el ejemplo de arriba: 2 × 520 (entradas) + 4 noches × 222.75 (Doble del G
 
 | Código | Casos |
 |---|---|
-| `400` | Body mal formado · campo inválido (el `message` lista los campos, ej. `"Datos inválidos: entradas[0].cantidad: must be greater than 0"`) · paquete vacío · evento finalizado o con `fechaFin` pasada · entrada de otro evento · hotel o vuelo fuera de la ciudad del evento · vuelo ya partido · fechas de hotel inválidas · tarjeta vencida o datos de tarjeta incompletos. |
+| `400` | Body mal formado · campo inválido (el `message` lista los campos, ej. `"Datos inválidos: entradas[0].cantidad: must be greater than 0"`) · paquete vacío · evento finalizado o con `fechaFin` pasada · entrada de otro evento · hotel o vuelo fuera de la ciudad del evento · vuelo ya partido · fechas de hotel inválidas o estadía de más de 30 noches · más de 10 unidades o ítems · tarjeta vencida o datos de tarjeta incompletos. |
 | `401` | Sin token o con token vencido o inválido. |
 | `404` | No existe el cliente, el evento, alguna entrada, habitación o vuelo, o el `idMetodoPago` no es del cliente. |
 | `409` | Sin stock suficiente. El `message` indica cuál, ej. `"No hay stock suficiente para la tribuna Paddock Club"`. |
+| `503` | El microservicio de ticketing no responde o falló. La reserva no se guarda (la transacción se revierte). |
 
 ### `GET /bookings`
 
