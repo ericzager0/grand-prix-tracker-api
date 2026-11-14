@@ -72,11 +72,12 @@ public class CompraConfirmadaEmailListener {
             String html = templateRenderer.render(TEMPLATE, variables(event));
             String asunto = "Confirmación de compra " + reserva.codigoConfirmacion() + " - Grand Prix Tracker";
             emailSender.send(event.emailCliente(), event.nombreCliente(), asunto, html);
-            log.info("Email de confirmación enviado a {} para la reserva {}", event.emailCliente(),
-                    reserva.codigoConfirmacion());
+            // Sin el email del cliente: los logs no llevan datos personales. El código de reserva alcanza
+            // para rastrear el envío.
+            log.info("Email de confirmación enviado para la reserva {}", reserva.codigoConfirmacion());
         } catch (Exception e) {
-            log.error("No se pudo enviar el email de la reserva {} a {}: {}",
-                    reserva.codigoConfirmacion(), event.emailCliente(), e.getMessage(), e);
+            log.error("No se pudo enviar el email de la reserva {}: {}",
+                    reserva.codigoConfirmacion(), e.getMessage(), e);
         }
     }
 
