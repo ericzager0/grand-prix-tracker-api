@@ -12,6 +12,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
@@ -23,6 +24,8 @@ import tools.jackson.databind.json.JsonMapper;
 public class SecurityConfig {
 
     private static final PathPatternRequestMatcher.Builder PATH = PathPatternRequestMatcher.withDefaults();
+
+    static final String CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 
     // Endpoints que no dependen del cliente. Todo lo demás (/bookings/**, /payment-methods/**,
     // /notifications/**, /users/**) requiere token.
@@ -43,6 +46,12 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // Toma los mappings de CorsConfig (Spring MVC).
                 .cors(Customizer.withDefaults())
+                // Spring ya pone X-Content-Type-Options, X-Frame-Options, Cache-Control y HSTS (sobre HTTPS).
+                // Se suman CSP y Referrer-Policy: la API solo devuelve JSON/XML, así que no necesita cargar
+                // nada ni ser embebida en otro sitio.
+                .headers(headers -> headers
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(CSP))
+                        .referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.NO_REFERRER)))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLICOS).permitAll()
                         .anyRequest().authenticated())

@@ -189,6 +189,27 @@ class SecurityConfigTest {
     }
 
     @Test
+    void respuestas_IncluyenHeadersDeSeguridad() throws Exception {
+        when(eventService.getAllEvents()).thenReturn(List.of());
+
+        mockMvc.perform(get("/events").secure(true))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Security-Policy", SecurityConfig.CSP))
+                .andExpect(header().string("Referrer-Policy", "no-referrer"))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+                .andExpect(header().string("X-Frame-Options", "DENY"))
+                .andExpect(header().string("Strict-Transport-Security", containsString("max-age=")));
+    }
+
+    @Test
+    void respuestasDeError_TambienIncluyenHeadersDeSeguridad() throws Exception {
+        mockMvc.perform(get("/bookings"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("Content-Security-Policy", SecurityConfig.CSP))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"));
+    }
+
+    @Test
     void preflight_MetodoNoPermitido_SeRechaza() throws Exception {
         mockMvc.perform(options("/bookings")
                         .header(HttpHeaders.ORIGIN, "http://localhost:3000")
