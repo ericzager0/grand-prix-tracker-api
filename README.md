@@ -62,9 +62,19 @@ Cada feature sigue la estructura `controller/`, `service/`, `repository/`, `mode
 
 La app se conecta a la base de Supabase configurada en `application.properties`. Queda en `http://localhost:8080`.
 
+La contraseña de la base **no está en el repo**: hay que pasarla por la variable de entorno `SPRING_DATASOURCE_PASSWORD` (pedirla al equipo; nunca commitearla). Sin esa variable la app no arranca. Los tests no la necesitan.
+
 ```bash
+export SPRING_DATASOURCE_PASSWORD='<contraseña de la base>'
 ./mvnw spring-boot:run
 ./mvnw test
+```
+
+Para trabajar sin Supabase se puede usar el perfil `local`, que apunta al Postgres de `docker-compose.yml` y no requiere la variable:
+
+```bash
+docker compose up -d
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
 El proyecto apunta a **Java 25**. Con JDK 21 se puede compilar y testear igual, pasando `-Dmaven.compiler.release=21`:
