@@ -2,7 +2,7 @@
 
 Base de datos PostgreSQL alojada en Supabase. Todas las tablas usan `uuid` como clave primaria (generado con `extensions.uuid_generate_v4()`, salvo `notificaciones` que usa `gen_random_uuid()`), y la mayoría tiene `created_at timestamptz DEFAULT timezone('utc'::text, now())`.
 
-RLS (Row Level Security) está **habilitado en todas las tablas y no hay políticas definidas**: con la clave pública de Supabase no se puede leer ni escribir nada. El backend no se ve afectado porque se conecta con el usuario `postgres`, que ignora RLS. Si en algún momento el frontend consulta Supabase directamente, hay que crear políticas.
+RLS (Row Level Security) está **habilitado en todas las tablas**. La única política es una de lectura sobre `clientes` para el rol `authenticated` (cada usuario ve solo su fila); no hay políticas de escritura en ninguna tabla. Con la clave pública de Supabase no se puede escribir nada, y el front no lee ni escribe tablas directamente: todo pasa por la API. El backend no se ve afectado porque se conecta con el usuario `postgres`, que ignora RLS. No agregar políticas de escritura: los datos se modifican solo por la API, que es la que valida.
 
 No hay triggers ni funciones propias en el esquema `public`.
 
