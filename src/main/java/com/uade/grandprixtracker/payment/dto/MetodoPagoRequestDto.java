@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 public record MetodoPagoRequestDto(
         @NotBlank(message = "el tipo es obligatorio")
@@ -22,10 +23,12 @@ public record MetodoPagoRequestDto(
         @JsonAlias("fecha_expiracion")
         String fechaExpiracion,
 
+        @Size(max = 255, message = "no puede superar los 255 caracteres")
         @JsonProperty("proveedorToken")
         @JsonAlias("proveedor_token")
         String proveedorToken,
 
+        @Size(max = 100, message = "no puede superar los 100 caracteres")
         @JsonProperty("nombre_titular")
         @JsonAlias("nombreTitular")
         String nombreTitular

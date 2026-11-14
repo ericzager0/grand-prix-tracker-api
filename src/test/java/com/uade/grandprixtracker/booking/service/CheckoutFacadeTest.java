@@ -246,6 +246,19 @@ class CheckoutFacadeTest {
     }
 
     @Test
+    void checkout_EstadiaMayorAlTope_LanzaIllegalArgumentSinCobrar() {
+        stubClienteYEvento();
+        LocalDate checkIn = LocalDate.of(2026, 11, 1);
+        CheckoutRequestDto request = new CheckoutRequestDto(
+                idEvento, null,
+                List.of(new HabitacionItem(UUID.randomUUID(), checkIn, checkIn.plusDays(CheckoutRequestDto.MAX_NOCHES + 1))),
+                null, pago);
+
+        assertThrows(IllegalArgumentException.class, () -> checkoutFacade.checkout(idCliente, request));
+        verifyNoInteractions(paymentService, hotelService);
+    }
+
+    @Test
     void checkout_SinStock_PropagaExcepcionYNoGuardaReserva() {
         stubClienteYEvento();
         when(paymentService.cobrar(cliente, pago)).thenReturn(metodoPago);

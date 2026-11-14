@@ -105,7 +105,7 @@ Recomendaciones:
 - **Mostrar el stock y deshabilitar lo agotado** (`stockDisponible === 0` / `stockAsientos === 0`). Aun así, entre que el usuario elige y confirma alguien puede comprar lo último: en ese caso el `POST` responde `409` y el `message` dice qué ítem se agotó. Lo ideal es volver al paso de ese ítem sin perder el resto del paquete.
 - **No confiar en `estado` del evento para saber si ya pasó.** Hay eventos cargados como `Proximo` cuyas fechas ya pasaron. Usar `fechaFin`: el backend rechaza la compra si `fechaFin` es anterior a hoy.
 - **Tarjetas vencidas**: `GET /payment-methods` las marca con `vencida: true`. El `POST` las rechaza, así que conviene deshabilitarlas.
-- **Validar en el front antes de enviar** (cantidades ≥ 1, 4 dígitos, `MM/AA`, al menos un ítem). Los errores de validación de campos del backend (`400` con `"Datos inválidos: ..."`) traen mensajes técnicos y en inglés, pensados para debug y no para el usuario. En cambio, los `message` de reglas de negocio (`409` de stock, evento finalizado, tarjeta vencida, etc.) están en español y se pueden mostrar tal cual.
+- **Validar en el front antes de enviar** (cantidades entre 1 y 10, 4 dígitos, `MM/AA`, al menos un ítem). Topes por compra: hasta 10 entradas por tribuna, 10 pasajeros por vuelo, 10 ítems de cada tipo y 30 noches de estadía. Los errores de validación de campos del backend (`400` con `"Datos inválidos: ..."`) traen mensajes técnicos y en inglés, pensados para debug y no para el usuario. En cambio, los `message` de reglas de negocio (`409` de stock, evento finalizado, tarjeta vencida, etc.) están en español y se pueden mostrar tal cual.
 - **Nombres de lugares**: mostrar lo que devuelve la API, no valores hardcodeados. Algunos nombres en la base no llevan tilde (por ejemplo, la ciudad figura como `"Sao Paulo"`).
 
 ---
@@ -406,9 +406,9 @@ Si cualquier paso falla no se aplica nada: ni stock, ni tarjeta, ni reserva.
 ```ts
 interface CheckoutRequest {
   idEvento: string;
-  entradas?: { idEntrada: string; cantidad: number }[];                                    // cantidad >= 1
+  entradas?: { idEntrada: string; cantidad: number }[];                                    // 1 a 10; hasta 10 ítems
   habitaciones?: { idHabitacion: string; fechaCheckIn: string; fechaCheckOut: string }[]; // "YYYY-MM-DD"
-  vuelos?: { idVuelo: string; cantidadPasajeros: number }[];                               // cantidadPasajeros >= 1
+  vuelos?: { idVuelo: string; cantidadPasajeros: number }[];                               // 1 a 10; hasta 10 ítems
   incluyeTransporte?: boolean;                                                             // opcional (default false); si es true suma +30 USD al totalUsd
   pago: PagoConTarjetaGuardada | PagoConTarjetaNueva;
 }

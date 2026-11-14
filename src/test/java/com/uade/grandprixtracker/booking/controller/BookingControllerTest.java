@@ -145,6 +145,52 @@ class BookingControllerTest {
     }
 
     @Test
+    void checkout_CantidadPorEncimaDelTope_Devuelve400() throws Exception {
+        mockMvc.perform(post("/bookings")
+                        .with(usuario())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(CheckoutRequestDto.MAX_CANTIDAD + 1)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+
+        verifyNoInteractions(checkoutFacade);
+    }
+
+    @Test
+    void checkout_CantidadEnElTope_SeAcepta() throws Exception {
+        when(checkoutFacade.checkout(eq(idCliente), any(CheckoutRequestDto.class)))
+                .thenReturn(reserva(UUID.randomUUID(), "GP-TOPE0001", "2026-10-01T12:00:00Z"));
+
+        mockMvc.perform(post("/bookings")
+                        .with(usuario())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(CheckoutRequestDto.MAX_CANTIDAD)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void checkout_DemasiadosItems_Devuelve400() throws Exception {
+        String entradas = java.util.stream.IntStream.range(0, CheckoutRequestDto.MAX_ITEMS + 1)
+                .mapToObj(i -> "{ \"idEntrada\": \"%s\", \"cantidad\": 1 }".formatted(UUID.randomUUID()))
+                .collect(java.util.stream.Collectors.joining(","));
+        String json = """
+                {
+                  "idEvento": "%s",
+                  "entradas": [%s],
+                  "pago": { "tipo": "Credito", "ultimos4Digitos": "4242", "fechaExpiracion": "12/28", "proveedorToken": "tok_test" }
+                }
+                """.formatted(idEvento, entradas);
+
+        mockMvc.perform(post("/bookings")
+                        .with(usuario())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(checkoutFacade);
+    }
+
+    @Test
     void checkout_SinStock_Devuelve409() throws Exception {
         when(checkoutFacade.checkout(eq(idCliente), any(CheckoutRequestDto.class)))
                 .thenThrow(new StockInsuficienteException("No hay stock suficiente para la tribuna Tribuna A"));

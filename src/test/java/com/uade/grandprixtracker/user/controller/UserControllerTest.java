@@ -2,6 +2,7 @@ package com.uade.grandprixtracker.user.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,6 +19,8 @@ import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -152,6 +155,59 @@ class UserControllerTest {
                         .content(jsonBody))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false));
+    }
+
+    // Cada campo con un valor fuera de formato o demasiado largo: 400 y el servicio no se llama.
+    static java.util.stream.Stream<String> camposInvalidos() {
+        return java.util.stream.Stream.of(
+                "\"nombre\": \"%s\"".formatted("a".repeat(101)),
+                "\"nombre\": \"Lando\", \"apellido\": \"%s\"".formatted("a".repeat(101)),
+                "\"nombre\": \"Lando\", \"telefono\": \"<script>alert(1)</script>\"",
+                "\"nombre\": \"Lando\", \"telefono\": \"+54 11 1234-5678 9999 0000 1\"",
+                "\"nombre\": \"Lando\", \"dni\": -5",
+                "\"nombre\": \"Lando\", \"dni\": 1234567890",
+                "\"nombre\": \"Lando\", \"dni\": 12.5",
+                "\"nombre\": \"Lando\", \"color\": \"red\"",
+                "\"nombre\": \"Lando\", \"color\": \"#E10600; background:url(x)\"");
+    }
+
+    @ParameterizedTest
+    @MethodSource("camposInvalidos")
+    @DisplayName("PUT /users/profile con campos fuera de formato o largo retorna 400")
+    void testUpdateProfile_CamposInvalidos_Devuelve400(String campos) throws Exception {
+        UUID idCliente = UUID.randomUUID();
+
+        mockMvc.perform(put("/users/profile")
+                        .with(jwt().jwt(j -> j.subject(idCliente.toString())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{" + campos + "}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("PUT /users/profile acepta el formato que manda el front y sin apellido")
+    void testUpdateProfile_FormatoDelFront_Devuelve200() throws Exception {
+        UUID idCliente = UUID.randomUUID();
+        when(userService.upsertProfile(eq(idCliente), any(UpdateUserProfileRequestDto.class), any()))
+                .thenReturn(new UserProfileResponseDto(idCliente, "Lando", "", "lando@mclaren.com",
+                        "+54 11 1234-5678", new BigDecimal("34567890"), "#E10600"));
+
+        mockMvc.perform(put("/users/profile")
+                        .with(jwt().jwt(j -> j.subject(idCliente.toString())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nombre": "Lando",
+                                  "apellido": "",
+                                  "telefono": "+54 11 1234-5678",
+                                  "dni": 34567890,
+                                  "color": "#E10600"
+                                }
+                                """))
+                .andExpect(status().isOk());
     }
 
     @Test

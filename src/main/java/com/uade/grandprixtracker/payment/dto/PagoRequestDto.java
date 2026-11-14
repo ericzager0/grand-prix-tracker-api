@@ -2,6 +2,7 @@ package com.uade.grandprixtracker.payment.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.util.UUID;
 
 /**
@@ -15,7 +16,9 @@ public record PagoRequestDto(
         String ultimos4Digitos,
         @Pattern(regexp = "(0[1-9]|1[0-2])/\\d{2}", message = "debe tener formato MM/AA")
         String fechaExpiracion,
+        @Size(max = 255, message = "no puede superar los 255 caracteres")
         String proveedorToken,
+        @Size(max = 100, message = "no puede superar los 100 caracteres")
         @JsonProperty("nombre_titular")
         String nombreTitular
 ) {

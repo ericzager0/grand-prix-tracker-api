@@ -112,6 +112,28 @@ class PaymentControllerTest {
     }
 
     @Test
+    void addPaymentMethod_TitularOTokenDemasiadoLargos_Devuelve400() throws Exception {
+        UUID idCliente = UUID.randomUUID();
+
+        mockMvc.perform(post("/payment-methods")
+                        .with(jwt().jwt(j -> j.subject(idCliente.toString())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "tipo": "Credito",
+                                  "ultimos4Digitos": "4242",
+                                  "fechaExpiracion": "12/30",
+                                  "proveedorToken": "%s",
+                                  "nombre_titular": "%s"
+                                }
+                                """.formatted("t".repeat(256), "n".repeat(101))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+
+        verifyNoInteractions(paymentService);
+    }
+
+    @Test
     void updatePaymentMethod_RequestValida_Devuelve200() throws Exception {
         UUID idCliente = UUID.randomUUID();
         UUID idMetodo = UUID.randomUUID();

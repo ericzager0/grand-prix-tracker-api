@@ -109,6 +109,10 @@ public class CheckoutFacade {
             if (item.fechaCheckIn().isBefore(hoy)) {
                 throw new IllegalArgumentException("La fecha de check-in no puede ser anterior a hoy");
             }
+            if (ChronoUnit.DAYS.between(item.fechaCheckIn(), item.fechaCheckOut()) > CheckoutRequestDto.MAX_NOCHES) {
+                throw new IllegalArgumentException(
+                        "La estadía no puede superar las " + CheckoutRequestDto.MAX_NOCHES + " noches");
+            }
         }
 
         MetodoPago metodoPago = paymentService.cobrar(cliente, request.pago());
