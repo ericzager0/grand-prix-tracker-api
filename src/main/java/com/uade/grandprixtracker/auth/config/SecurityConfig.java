@@ -24,13 +24,12 @@ public class SecurityConfig {
 
     private static final PathPatternRequestMatcher.Builder PATH = PathPatternRequestMatcher.withDefaults();
 
-    // Endpoints que no dependen del cliente. Todo lo demás (/bookings/**, /payment-methods/**) requiere token.
+    // Endpoints que no dependen del cliente. Todo lo demás (/bookings/**, /payment-methods/**,
+    // /notifications/**, /users/**) requiere token.
     private static final RequestMatcher PUBLICOS = new OrRequestMatcher(
             PATH.matcher(HttpMethod.OPTIONS, "/**"),   // preflight de CORS
             PATH.matcher(HttpMethod.GET, "/events/**"), // incluye /events/{id}/hotels, /tickets y /flights
             PATH.matcher("/ws/**"),                     // SOAP
-            // Pendiente: las notificaciones todavía reciben ?userId= y el front no les manda token.
-            PATH.matcher("/notifications/**"),
             PATH.matcher("/error"));
 
     @Bean

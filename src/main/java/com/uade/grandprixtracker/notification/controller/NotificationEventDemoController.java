@@ -9,6 +9,7 @@ import com.uade.grandprixtracker.notification.event.PurchaseStatusChangedEvent;
 import com.uade.grandprixtracker.shared.response.ApiResponse;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,7 +19,11 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Controlador de demostración y prueba para disparar eventos de dominio.
  * Permite validar el funcionamiento del patrón Observer (Spring Events) y las estrategias de notificación.
+ *
+ * Solo existe con el perfil dev o local: en producción estos endpoints no se registran (responden 404),
+ * porque permiten crear notificaciones globales con contenido arbitrario. Igual requieren token.
  */
+@Profile({"dev", "local"})
 @RestController
 @RequestMapping("/notifications/events")
 public class NotificationEventDemoController {

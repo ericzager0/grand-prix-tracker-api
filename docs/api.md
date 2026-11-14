@@ -57,7 +57,7 @@ Ante un `401` el front debería refrescar la sesión (o mandar al login) y reint
 
 Los endpoints públicos (`GET /events/**`, incluidos `/tickets`, `/hotels` y `/flights`, y el servicio SOAP `/ws`) no necesitan token. Si llega uno se ignora, así que un token vencido no los rompe.
 
-**Pendiente:** `/notifications/**` todavía identifica al usuario con `?userId=` y no verifica token.
+`/notifications/**` requiere token como el resto: el usuario sale del claim `sub`, y cualquier `?userId=` o `idUsuario` que mande el cliente se ignora. `POST /notifications` crea la notificación siempre para el usuario del token (no se pueden crear globales ni para otro usuario) y `urlDestino` tiene que ser una ruta interna que empiece con `/`. `PATCH /notifications/{id}/read` sobre una notificación de otro usuario responde `404`; sobre una global responde `200` sin modificarla (el estado de leído de las globales lo guarda cada cliente). Los endpoints de demo `/notifications/events/*` solo existen con el perfil `dev` o `local`.
 
 ### Envoltorio de respuesta
 

@@ -113,23 +113,69 @@ class NotificationServiceTest {
     }
 
     @Test
-    void markAsRead_success() {
+    void createForUser_usaElUsuarioRecibidoYNoElDelDto() {
+        UUID otroUsuario = UUID.randomUUID();
+        CreateNotificationRequestDto dto = new CreateNotificationRequestDto(
+                otroUsuario, "Compra confirmada", "Detalle", NotificationType.ORDER_CONFIRMATION, "/profile", null);
+        when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        NotificationResponseDto result = notificationService.createForUser(userId, dto);
+
+        assertEquals(userId, result.idUsuario());
+        org.mockito.ArgumentCaptor<Notification> guardada = org.mockito.ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(guardada.capture());
+        assertEquals(userId, guardada.getValue().getIdUsuario());
+    }
+
+    @Test
+    void createForUser_sinUsuario_noCreaUnaGlobal() {
+        CreateNotificationRequestDto dto = new CreateNotificationRequestDto(
+                null, "Oferta", "Detalle", NotificationType.OFFER, "/calendar", null);
+
+        assertThrows(IllegalArgumentException.class, () -> notificationService.createForUser(null, dto));
+        verify(notificationRepository, never()).save(any());
+    }
+
+    @Test
+    void markAsRead_propia_laMarca() {
         when(notificationRepository.findById(notificationId)).thenReturn(Optional.of(testNotification));
         when(notificationRepository.save(any(Notification.class))).thenReturn(testNotification);
 
-        NotificationResponseDto result = notificationService.markAsRead(notificationId);
+        NotificationResponseDto result = notificationService.markAsRead(userId, notificationId);
 
-        assertNotNull(result);
         assertTrue(result.leido());
-        verify(notificationRepository, times(1)).findById(notificationId);
         verify(notificationRepository, times(1)).save(testNotification);
+    }
+
+    @Test
+    void markAsRead_deOtroUsuario_respondeComoInexistenteYNoLaModifica() {
+        when(notificationRepository.findById(notificationId)).thenReturn(Optional.of(testNotification));
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> notificationService.markAsRead(UUID.randomUUID(), notificationId));
+
+        assertFalse(testNotification.getLeido());
+        verify(notificationRepository, never()).save(any());
+    }
+
+    @Test
+    void markAsRead_global_noSeModificaParaElResto() {
+        Notification global = new Notification(null, "Oferta", "20% off", NotificationType.OFFER, "/calendar", null);
+        global.setIdNotificacion(notificationId);
+        when(notificationRepository.findById(notificationId)).thenReturn(Optional.of(global));
+
+        NotificationResponseDto result = notificationService.markAsRead(userId, notificationId);
+
+        assertFalse(result.leido());
+        assertFalse(global.getLeido());
+        verify(notificationRepository, never()).save(any());
     }
 
     @Test
     void markAsRead_notFound_throwsException() {
         when(notificationRepository.findById(notificationId)).thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class, () -> notificationService.markAsRead(notificationId));
+        assertThrows(ResourceNotFoundException.class, () -> notificationService.markAsRead(userId, notificationId));
         verify(notificationRepository, never()).save(any());
     }
 

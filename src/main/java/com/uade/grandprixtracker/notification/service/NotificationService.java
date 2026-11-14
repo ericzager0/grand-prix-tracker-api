@@ -39,27 +39,53 @@ public class NotificationService {
         return new UnreadCountResponseDto(count);
     }
 
+    /**
+     * Uso interno (canal in-app). Con idUsuario null la notificación es global.
+     */
     @Transactional
     public NotificationResponseDto createNotification(CreateNotificationRequestDto dto) {
+        return guardar(dto.idUsuario(), dto);
+    }
+
+    /**
+     * Alta pedida por un cliente: el destinatario es siempre el usuario autenticado,
+     * sin importar el idUsuario que venga en el body.
+     */
+    @Transactional
+    public NotificationResponseDto createForUser(UUID idUsuario, CreateNotificationRequestDto dto) {
+        if (idUsuario == null) {
+            throw new IllegalArgumentException("El usuario es obligatorio");
+        }
+        return guardar(idUsuario, dto);
+    }
+
+    private NotificationResponseDto guardar(UUID idUsuario, CreateNotificationRequestDto dto) {
         Notification notification = new Notification(
-                dto.idUsuario(),
+                idUsuario,
                 dto.titulo(),
                 dto.mensaje(),
                 dto.tipo() != null ? dto.tipo() : NotificationType.SYSTEM,
                 dto.urlDestino(),
                 dto.metadata()
         );
-        Notification saved = notificationRepository.save(notification);
-        return mapToDto(saved);
+        return mapToDto(notificationRepository.save(notification));
     }
 
+    /**
+     * Solo el dueño puede marcar su notificación. Una de otro usuario se responde igual que una
+     * inexistente, para no revelar que existe. Las globales (idUsuario null) son una única fila
+     * compartida por todos: no se modifican, para que un usuario no las marque como leídas para el resto.
+     */
     @Transactional
-    public NotificationResponseDto markAsRead(UUID idNotificacion) {
+    public NotificationResponseDto markAsRead(UUID idUsuario, UUID idNotificacion) {
         Notification notification = notificationRepository.findById(idNotificacion)
-                .orElseThrow(() -> new ResourceNotFoundException("Notificación", "id", idNotificacion));
+                .filter(n -> n.getIdUsuario() == null || n.getIdUsuario().equals(idUsuario))
+                .orElseThrow(() -> new ResourceNotFoundException("Notificación no encontrada"));
+        if (notification.getIdUsuario() == null) {
+            return mapToDto(notification);
+        }
         notification.setLeido(true);
-        Notification updated = notificationRepository.save(notification);
-        return mapToDto(updated);
+        return mapToDto(notificationRepository.save(notification));
     }
 
     @Transactional
